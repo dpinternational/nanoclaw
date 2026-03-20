@@ -45,11 +45,15 @@ server.tool(
   {
     text: z.string().describe('The message text to send'),
     sender: z.string().optional().describe('Your role/identity name (e.g. "Researcher"). When set, messages appear from a dedicated bot in Telegram.'),
+    target_jid: z.string().optional().describe('(Main group only) JID of the target chat/group to send to (e.g., "tg:-1002362081030"). Defaults to current chat.'),
   },
   async (args) => {
+    // Determine target: use provided target_jid (main only) or current chat
+    const targetJid = (isMain && args.target_jid) ? args.target_jid : chatJid;
+
     const data: Record<string, string | undefined> = {
       type: 'message',
-      chatJid,
+      chatJid: targetJid,
       text: args.text,
       sender: args.sender || undefined,
       groupFolder,
@@ -58,7 +62,11 @@ server.tool(
 
     writeIpcFile(MESSAGES_DIR, data);
 
-    return { content: [{ type: 'text' as const, text: 'Message sent.' }] };
+    const response = args.target_jid && isMain
+      ? `Message sent to ${args.target_jid}.`
+      : 'Message sent.';
+
+    return { content: [{ type: 'text' as const, text: response }] };
   },
 );
 

@@ -129,6 +129,7 @@ function buildVolumeMounts(
       settingsFile,
       JSON.stringify(
         {
+          model: 'claude-sonnet-4-20250514',
           env: {
             // Enable agent swarms (subagent orchestration)
             // https://code.claude.com/docs/en/agent-teams#orchestrate-teams-of-claude-code-sessions
@@ -172,6 +173,17 @@ function buildVolumeMounts(
       hostPath: gmailDir,
       containerPath: '/home/node/.gmail-mcp',
       readonly: false, // MCP may need to refresh OAuth tokens
+    });
+  }
+
+  // Google Workspace CLI credentials (for gws inside the container)
+  const gwsCredFile = path.join(homeDir, '.config', 'gws', 'credentials.json');
+  if (fs.existsSync(gwsCredFile)) {
+    const gwsDir = path.join(homeDir, '.config', 'gws');
+    mounts.push({
+      hostPath: gwsDir,
+      containerPath: '/home/node/.config/gws',
+      readonly: true,
     });
   }
 
@@ -249,6 +261,12 @@ function buildContainerArgs(
   } else {
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
   }
+
+  // Google Workspace CLI credentials file path (inside container)
+  args.push(
+    '-e',
+    'GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=/home/node/.config/gws/credentials.json',
+  );
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
@@ -519,11 +537,7 @@ export async function runContainerAgent(
         // Full input is only included at verbose level to avoid
         // persisting user conversation content on every non-zero exit.
         if (isVerbose) {
-          logLines.push(
-            `=== Input ===`,
-            JSON.stringify(input, null, 2),
-            ``,
-          );
+          logLines.push(`=== Input ===`, JSON.stringify(input, null, 2), ``);
         } else {
           logLines.push(
             `=== Input Summary ===`,
