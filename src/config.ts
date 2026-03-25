@@ -16,6 +16,22 @@ export const ASSISTANT_HAS_OWN_NUMBER =
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
+// Webhook configuration
+export const WEBHOOK_ENABLED = process.env.WEBHOOK_ENABLED === 'true';
+export const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT || '3002', 10);
+export const WEBHOOK_PATH = process.env.WEBHOOK_PATH || '/webhook';
+export const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN || '';
+export const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN || '';
+export const HTTP3_ENABLED = process.env.HTTP3_ENABLED === 'true';
+export const WEBHOOK_MAX_CONNECTIONS = parseInt(
+  process.env.WEBHOOK_MAX_CONNECTIONS || '100',
+  10,
+);
+export const WEBHOOK_RATE_LIMIT = parseInt(
+  process.env.WEBHOOK_RATE_LIMIT || '1000',
+  10,
+); // requests per minute
+
 // Absolute paths needed for container mounts
 const PROJECT_ROOT = process.cwd();
 const HOME_DIR = process.env.HOME || os.homedir();

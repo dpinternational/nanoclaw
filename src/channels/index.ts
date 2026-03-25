@@ -4,8 +4,8 @@
 // discord
 import './discord.js';
 
-// gmail
-import './gmail.js';
+// gmail (enhanced with classification and Discord routing)
+import './enhanced-gmail.js';
 
 // slack
 

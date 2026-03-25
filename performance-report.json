@@ -1,0 +1,71 @@
+{
+  "timestamp": "2026-03-25T16:18:06.793Z",
+  "summary": {
+    "walEnabled": false,
+    "totalMessagesTested": 969,
+    "groupsWithEnhancedSchema": 2,
+    "totalGroupsTested": 2
+  },
+  "performance": {
+    "mainDatabase": [
+      {
+        "query": "simple_select",
+        "avgTime": 0.028,
+        "medianTime": 0.024
+      },
+      {
+        "query": "timestamp_query",
+        "avgTime": 0.297,
+        "medianTime": 0.288
+      },
+      {
+        "query": "chat_query",
+        "avgTime": 0.045,
+        "medianTime": 0.044
+      },
+      {
+        "query": "priority_query",
+        "avgTime": 0.11,
+        "medianTime": 0.097
+      },
+      {
+        "query": "hash_dedup",
+        "avgTime": 0.04,
+        "medianTime": 0.04
+      },
+      {
+        "query": "complex_join",
+        "avgTime": 0.042,
+        "medianTime": 0.041
+      }
+    ],
+    "groupDatabases": [
+      {
+        "group": "telegram_fb_posting",
+        "messageCount": 22,
+        "avgQueryTime": "0.02"
+      },
+      {
+        "group": "telegram_main",
+        "messageCount": 105,
+        "avgQueryTime": "0.02"
+      }
+    ],
+    "connectionPooling": {
+      "concurrentConnections": 5,
+      "operationsPerSecond": 100000,
+      "errors": 0
+    }
+  },
+  "optimizations": {
+    "fragmentationLevel": 3.1,
+    "integrityCheck": "issues",
+    "indexesWorking": "verified"
+  },
+  "recommendations": [
+    "❌ WAL mode is not enabled - run migration script",
+    "✅ Fragmentation level is acceptable",
+    "✅ Query performance is good",
+    "✅ Connection pooling performance is excellent"
+  ]
+}

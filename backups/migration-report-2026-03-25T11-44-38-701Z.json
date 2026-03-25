@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-03-25T11:44:38.701Z",
+  "status": "SUCCESS",
+  "successful": 1,
+  "failed": 0,
+  "results": [
+    {
+      "success": true,
+      "group": "David",
+      "count": 0
+    }
+  ],
+  "log": [
+    {
+      "timestamp": "2026-03-25T11:44:38.576Z",
+      "level": "INFO",
+      "message": "Starting migration to separate databases..."
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.577Z",
+      "level": "INFO",
+      "message": "Creating backup of original database..."
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.579Z",
+      "level": "INFO",
+      "message": "Backup created: /Users/davidprice/nanoclaw/backups/messages-backup-2026-03-25T11-44-38-577Z.db"
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.586Z",
+      "level": "INFO",
+      "message": "Found 1 registered Telegram groups"
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.586Z",
+      "level": "INFO",
+      "message": "Migrating group: David (telegram_main\ntg:-4673675100)"
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.599Z",
+      "level": "ERROR",
+      "message": "Error getting messages for tg:577469008: spawnSync /bin/sh ENOBUFS"
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.599Z",
+      "level": "INFO",
+      "message": "Found 0 messages for David"
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.599Z",
+      "level": "INFO",
+      "message": "✅ Successfully migrated David: 0 messages"
+    },
+    {
+      "timestamp": "2026-03-25T11:44:38.701Z",
+      "level": "INFO",
+      "message": "Migration completed: 1 success, 0 failed"
+    }
+  ]
+}

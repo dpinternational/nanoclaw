@@ -1,0 +1,664 @@
+{
+  "mainDatabase": true,
+  "groupDatabases": [
+    {
+      "groupFolder": "telegram_7th_level_training",
+      "success": true
+    },
+    {
+      "groupFolder": "telegram_fb_posting",
+      "success": true
+    },
+    {
+      "groupFolder": "telegram_main",
+      "success": true
+    },
+    {
+      "groupFolder": "telegram_main\ntg:-4673675100",
+      "success": true
+    },
+    {
+      "groupFolder": "telegram_organic_growth",
+      "success": true
+    },
+    {
+      "groupFolder": "telegram_the_council",
+      "success": true
+    },
+    {
+      "groupFolder": "telegram_tpg_uncaged",
+      "success": true
+    }
+  ],
+  "totalGroups": 7,
+  "successfulGroups": 7,
+  "errors": [
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "error",
+      "message": "Migration add_created_at_messages failed",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "error",
+      "message": "Migration add_updated_at_chats failed",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "error",
+      "message": "Migration add_updated_at_tasks failed",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    }
+  ],
+  "startTime": "2026-03-25T16:18:02.799Z",
+  "endTime": "2026-03-25T16:18:02.829Z",
+  "migrationLog": [
+    {
+      "timestamp": "2026-03-25T16:18:02.798Z",
+      "level": "info",
+      "message": "Starting full database migration to Phase 1.1 optimizations",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.799Z",
+      "level": "info",
+      "message": "Starting main database migration",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.800Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/store/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/store/messages.db.backup.1774455482799"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.802Z",
+      "level": "info",
+      "message": "Pre-migration stats",
+      "data": {
+        "messageCount": 842,
+        "chatCount": 302,
+        "taskCount": 17
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.802Z",
+      "level": "info",
+      "message": "Applying optimizations to main database",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.803Z",
+      "level": "info",
+      "message": "WAL mode and optimizations applied",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.803Z",
+      "level": "info",
+      "message": "Applied migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "info",
+      "message": "Applied migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "info",
+      "message": "Applied migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "info",
+      "message": "Applied migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "error",
+      "message": "Migration add_created_at_messages failed",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "error",
+      "message": "Migration add_updated_at_chats failed",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "error",
+      "message": "Migration add_updated_at_tasks failed",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "info",
+      "message": "Created performance index: idx_messages_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.804Z",
+      "level": "info",
+      "message": "Created performance index: idx_messages_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.805Z",
+      "level": "info",
+      "message": "Created performance index: idx_messages_chat_time_bot",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.805Z",
+      "level": "info",
+      "message": "Created performance index: idx_messages_time_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.805Z",
+      "level": "info",
+      "message": "Created performance index: idx_tasks_due",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.805Z",
+      "level": "info",
+      "message": "Created performance index: idx_tasks_group_folder",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.805Z",
+      "level": "info",
+      "message": "Created performance monitoring table",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.811Z",
+      "level": "info",
+      "message": "Backfilled message metadata",
+      "data": {
+        "messagesUpdated": 842
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.811Z",
+      "level": "info",
+      "message": "Post-migration stats",
+      "data": {
+        "messageCount": 842,
+        "chatCount": 302,
+        "taskCount": 17
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.812Z",
+      "level": "info",
+      "message": "Main database migration completed successfully",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.812Z",
+      "level": "info",
+      "message": "Found 7 group databases to migrate",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.813Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_7th_level_training",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.813Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_7th_level_training/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_7th_level_training/messages.db.backup.1774455482813"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.814Z",
+      "level": "debug",
+      "message": "Applied telegram_7th_level_training migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.814Z",
+      "level": "debug",
+      "message": "Applied telegram_7th_level_training migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.814Z",
+      "level": "debug",
+      "message": "Applied telegram_7th_level_training migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.814Z",
+      "level": "debug",
+      "message": "Applied telegram_7th_level_training migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.814Z",
+      "level": "debug",
+      "message": "Applied telegram_7th_level_training migration: add_created_at",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.814Z",
+      "level": "debug",
+      "message": "Applied telegram_7th_level_training migration: add_updated_at",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.815Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_7th_level_training",
+      "data": {
+        "messagesUpdated": 0,
+        "messageCount": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.816Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_fb_posting",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_fb_posting/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_fb_posting/messages.db.backup.1774455482816"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "debug",
+      "message": "Applied telegram_fb_posting migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "debug",
+      "message": "Applied telegram_fb_posting migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "debug",
+      "message": "Applied telegram_fb_posting migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "debug",
+      "message": "Applied telegram_fb_posting migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "warn",
+      "message": "Migration add_created_at failed for telegram_fb_posting",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.817Z",
+      "level": "warn",
+      "message": "Migration add_updated_at failed for telegram_fb_posting",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.818Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_fb_posting",
+      "data": {
+        "messagesUpdated": 22,
+        "messageCount": 22
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.818Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_main",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.819Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_main/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_main/messages.db.backup.1774455482818"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.819Z",
+      "level": "debug",
+      "message": "Applied telegram_main migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.819Z",
+      "level": "debug",
+      "message": "Applied telegram_main migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.819Z",
+      "level": "debug",
+      "message": "Applied telegram_main migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.819Z",
+      "level": "debug",
+      "message": "Applied telegram_main migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.819Z",
+      "level": "warn",
+      "message": "Migration add_created_at failed for telegram_main",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.820Z",
+      "level": "warn",
+      "message": "Migration add_updated_at failed for telegram_main",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.820Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_main",
+      "data": {
+        "messagesUpdated": 105,
+        "messageCount": 105
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.821Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_main\ntg:-4673675100",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.822Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_main\ntg:-4673675100/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_main\ntg:-4673675100/messages.db.backup.1774455482821"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.822Z",
+      "level": "debug",
+      "message": "Applied telegram_main\ntg:-4673675100 migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.822Z",
+      "level": "debug",
+      "message": "Applied telegram_main\ntg:-4673675100 migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.822Z",
+      "level": "debug",
+      "message": "Applied telegram_main\ntg:-4673675100 migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.822Z",
+      "level": "debug",
+      "message": "Applied telegram_main\ntg:-4673675100 migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.822Z",
+      "level": "debug",
+      "message": "Applied telegram_main\ntg:-4673675100 migration: add_created_at",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.823Z",
+      "level": "debug",
+      "message": "Applied telegram_main\ntg:-4673675100 migration: add_updated_at",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.823Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_main\ntg:-4673675100",
+      "data": {
+        "messagesUpdated": 0,
+        "messageCount": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.823Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_organic_growth",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_organic_growth/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_organic_growth/messages.db.backup.1774455482823"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "debug",
+      "message": "Applied telegram_organic_growth migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "debug",
+      "message": "Applied telegram_organic_growth migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "debug",
+      "message": "Applied telegram_organic_growth migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "debug",
+      "message": "Applied telegram_organic_growth migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "debug",
+      "message": "Applied telegram_organic_growth migration: add_created_at",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.824Z",
+      "level": "debug",
+      "message": "Applied telegram_organic_growth migration: add_updated_at",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.825Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_organic_growth",
+      "data": {
+        "messagesUpdated": 0,
+        "messageCount": 0
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.825Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_the_council",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.825Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_the_council/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_the_council/messages.db.backup.1774455482825"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.826Z",
+      "level": "debug",
+      "message": "Applied telegram_the_council migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.826Z",
+      "level": "debug",
+      "message": "Applied telegram_the_council migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.826Z",
+      "level": "debug",
+      "message": "Applied telegram_the_council migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.826Z",
+      "level": "debug",
+      "message": "Applied telegram_the_council migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.826Z",
+      "level": "warn",
+      "message": "Migration add_created_at failed for telegram_the_council",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.826Z",
+      "level": "warn",
+      "message": "Migration add_updated_at failed for telegram_the_council",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.827Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_the_council",
+      "data": {
+        "messagesUpdated": 38,
+        "messageCount": 38
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.827Z",
+      "level": "info",
+      "message": "Migrating group database: telegram_tpg_uncaged",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.827Z",
+      "level": "info",
+      "message": "Database backup created",
+      "data": {
+        "original": "/Users/davidprice/nanoclaw/data/groups/telegram_tpg_uncaged/messages.db",
+        "backup": "/Users/davidprice/nanoclaw/data/groups/telegram_tpg_uncaged/messages.db.backup.1774455482827"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.828Z",
+      "level": "debug",
+      "message": "Applied telegram_tpg_uncaged migration: add_processing_priority",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.828Z",
+      "level": "debug",
+      "message": "Applied telegram_tpg_uncaged migration: add_content_hash",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.828Z",
+      "level": "debug",
+      "message": "Applied telegram_tpg_uncaged migration: add_content_truncated",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.828Z",
+      "level": "debug",
+      "message": "Applied telegram_tpg_uncaged migration: add_metadata",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.828Z",
+      "level": "warn",
+      "message": "Migration add_created_at failed for telegram_tpg_uncaged",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.828Z",
+      "level": "warn",
+      "message": "Migration add_updated_at failed for telegram_tpg_uncaged",
+      "data": {
+        "error": "Cannot add a column with non-constant default"
+      }
+    },
+    {
+      "timestamp": "2026-03-25T16:18:02.829Z",
+      "level": "info",
+      "message": "Successfully migrated telegram_tpg_uncaged",
+      "data": {
+        "messagesUpdated": 236,
+        "messageCount": 236
+      }
+    }
+  ]
+}

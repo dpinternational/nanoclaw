@@ -8,6 +8,7 @@ import {
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
+  WEBHOOK_ENABLED,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
 import './channels/index.js';
@@ -60,6 +61,7 @@ import {
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
+import { webhookServer } from './webhook-server.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -487,6 +489,12 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
     proxyServer.close();
+
+    // Stop webhook server if running
+    if (webhookServer.isRunning()) {
+      await webhookServer.stop();
+    }
+
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);

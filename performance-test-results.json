@@ -1,0 +1,204 @@
+{
+  "timestamp": "2026-03-25T16:18:06.793Z",
+  "tests": {
+    "mainDatabase": {
+      "walMode": [
+        {
+          "journal_mode": "wal"
+        }
+      ],
+      "messageCount": 842,
+      "chatCount": 302,
+      "queryTests": [
+        {
+          "queryName": "simple_select",
+          "iterations": 100,
+          "avgTime": 0.028,
+          "minTime": 0.023,
+          "maxTime": 0.338,
+          "medianTime": 0.024,
+          "totalTime": 2.798
+        },
+        {
+          "queryName": "timestamp_query",
+          "iterations": 100,
+          "avgTime": 0.297,
+          "minTime": 0.25,
+          "maxTime": 0.472,
+          "medianTime": 0.288,
+          "totalTime": 29.715
+        },
+        {
+          "queryName": "chat_query",
+          "iterations": 100,
+          "avgTime": 0.045,
+          "minTime": 0.043,
+          "maxTime": 0.052,
+          "medianTime": 0.044,
+          "totalTime": 4.47
+        },
+        {
+          "queryName": "priority_query",
+          "iterations": 50,
+          "avgTime": 0.11,
+          "minTime": 0.093,
+          "maxTime": 0.52,
+          "medianTime": 0.097,
+          "totalTime": 5.483
+        },
+        {
+          "queryName": "hash_dedup",
+          "iterations": 20,
+          "avgTime": 0.04,
+          "minTime": 0.039,
+          "maxTime": 0.045,
+          "medianTime": 0.04,
+          "totalTime": 0.809
+        },
+        {
+          "queryName": "complex_join",
+          "iterations": 30,
+          "avgTime": 0.042,
+          "minTime": 0.038,
+          "maxTime": 0.05,
+          "medianTime": 0.041,
+          "totalTime": 1.249
+        }
+      ],
+      "explainResults": {
+        "timestamp_index": [
+          {
+            "id": 4,
+            "parent": 0,
+            "notused": 100,
+            "detail": "SEARCH messages USING INDEX idx_timestamp (timestamp>?)"
+          }
+        ],
+        "priority_index": [
+          {
+            "id": 5,
+            "parent": 0,
+            "notused": 101,
+            "detail": "SEARCH messages USING INDEX idx_messages_priority (processing_priority>?)"
+          }
+        ]
+      },
+      "integrityCheck": [
+        {
+          "integrity_check": "ok"
+        }
+      ],
+      "fragmentation": {
+        "freePages": 23,
+        "totalPages": 741,
+        "fragmentationPercent": 3.1
+      }
+    },
+    "groupDatabases": [
+      {
+        "groupFolder": "telegram_fb_posting",
+        "walMode": [
+          {
+            "journal_mode": "wal"
+          }
+        ],
+        "messageCount": 22,
+        "hasEnhancedSchema": true,
+        "queryTests": [
+          {
+            "queryName": "group_recent_messages",
+            "iterations": 100,
+            "avgTime": 0.028,
+            "minTime": 0.027,
+            "maxTime": 0.04,
+            "medianTime": 0.028,
+            "totalTime": 2.843
+          },
+          {
+            "queryName": "group_sender_stats",
+            "iterations": 100,
+            "avgTime": 0.008,
+            "minTime": 0.007,
+            "maxTime": 0.011,
+            "medianTime": 0.008,
+            "totalTime": 0.823
+          },
+          {
+            "queryName": "sales_detection",
+            "iterations": 30,
+            "avgTime": 0.007,
+            "minTime": 0.007,
+            "maxTime": 0.009,
+            "medianTime": 0.007,
+            "totalTime": 0.22
+          },
+          {
+            "queryName": "priority_messages",
+            "iterations": 50,
+            "avgTime": 0.024,
+            "minTime": 0.022,
+            "maxTime": 0.03,
+            "medianTime": 0.023,
+            "totalTime": 1.18
+          }
+        ]
+      },
+      {
+        "groupFolder": "telegram_main",
+        "walMode": [
+          {
+            "journal_mode": "wal"
+          }
+        ],
+        "messageCount": 105,
+        "hasEnhancedSchema": true,
+        "queryTests": [
+          {
+            "queryName": "group_recent_messages",
+            "iterations": 100,
+            "avgTime": 0.028,
+            "minTime": 0.027,
+            "maxTime": 0.037,
+            "medianTime": 0.027,
+            "totalTime": 2.793
+          },
+          {
+            "queryName": "group_sender_stats",
+            "iterations": 100,
+            "avgTime": 0.012,
+            "minTime": 0.011,
+            "maxTime": 0.02,
+            "medianTime": 0.011,
+            "totalTime": 1.181
+          },
+          {
+            "queryName": "sales_detection",
+            "iterations": 30,
+            "avgTime": 0.016,
+            "minTime": 0.015,
+            "maxTime": 0.018,
+            "medianTime": 0.015,
+            "totalTime": 0.468
+          },
+          {
+            "queryName": "priority_messages",
+            "iterations": 50,
+            "avgTime": 0.038,
+            "minTime": 0.037,
+            "maxTime": 0.043,
+            "medianTime": 0.038,
+            "totalTime": 1.909
+          }
+        ]
+      }
+    ],
+    "connectionPooling": {
+      "concurrentConnections": 5,
+      "operationsPerSecond": 100000,
+      "errors": [],
+      "successfulOperations": 100,
+      "failedOperations": 0
+    }
+  },
+  "summary": {}
+}
