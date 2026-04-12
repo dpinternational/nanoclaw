@@ -33,7 +33,52 @@ function isValidEntry(entry: unknown): entry is ChatAllowlistEntry {
 export function loadSenderAllowlist(
   pathOverride?: string,
 ): SenderAllowlistConfig {
+  return loadSenderAllowlistCached(pathOverride);
+}
+
+// --- Cached loader: checks file mtime every 60s instead of reading disk per message ---
+let _cachedConfig: SenderAllowlistConfig | null = null;
+let _cachedMtimeMs = 0;
+let _lastCheckMs = 0;
+const CACHE_TTL_MS = 60_000; // Re-check file mtime every 60s
+
+function loadSenderAllowlistCached(
+  pathOverride?: string,
+): SenderAllowlistConfig {
   const filePath = pathOverride ?? SENDER_ALLOWLIST_PATH;
+
+  // Bypass cache when using a custom path (e.g. tests)
+  if (pathOverride) {
+    return loadSenderAllowlistFromDisk(filePath);
+  }
+
+  const now = Date.now();
+
+  // Within TTL window and we have a cached value — return it
+  if (_cachedConfig && now - _lastCheckMs < CACHE_TTL_MS) {
+    return _cachedConfig;
+  }
+
+  _lastCheckMs = now;
+
+  // Check if file has changed (stat is much cheaper than read+parse)
+  try {
+    const stat = fs.statSync(filePath);
+    if (_cachedConfig && stat.mtimeMs === _cachedMtimeMs) {
+      return _cachedConfig;
+    }
+    _cachedMtimeMs = stat.mtimeMs;
+  } catch {
+    // File doesn't exist or can't stat — fall through to full load
+  }
+
+  _cachedConfig = loadSenderAllowlistFromDisk(filePath);
+  return _cachedConfig;
+}
+
+function loadSenderAllowlistFromDisk(
+  filePath: string,
+): SenderAllowlistConfig {
 
   let raw: string;
   try {

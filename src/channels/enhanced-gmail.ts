@@ -178,6 +178,12 @@ export class EnhancedGmailChannel implements Channel {
         this.processedIds = new Set(ids.slice(ids.length - 2500));
       }
 
+      // Cap thread metadata to prevent memory leak
+      if (this.threadMeta.size > 5000) {
+        const entries = [...this.threadMeta.entries()];
+        this.threadMeta = new Map(entries.slice(entries.length - 2500));
+      }
+
       this.consecutiveErrors = 0;
 
       // Send periodic stats update
@@ -261,12 +267,19 @@ export class EnhancedGmailChannel implements Channel {
       const isTPG = isTPGEmail(senderEmail);
       const isRecruiterShare =
         senderEmail === 'drive-shares-dm-noreply@google.com' &&
-        (body.includes('@tpglife.com') || /\b(Robert Ramsey|Sandra Futch)\b/i.test(senderName));
+        (body.includes('@tpglife.com') ||
+          /\b(Robert Ramsey|Sandra Futch)\b/i.test(senderName));
       if (isTPG || isRecruiterShare) {
         captureTPGEmail({
           gmailMessageId: messageId,
           gmailThreadId: threadId,
-          senderEmail: isRecruiterShare ? senderName.replace(/\s*\(via.*\)/, '').trim().toLowerCase().replace(/\s+/g, '.') + '@tpglife.com' : senderEmail,
+          senderEmail: isRecruiterShare
+            ? senderName
+                .replace(/\s*\(via.*\)/, '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '.') + '@tpglife.com'
+            : senderEmail,
           senderName: senderName.replace(/\s*\(via.*\)/, '').trim(),
           subject,
           body,
@@ -465,7 +478,9 @@ export class EnhancedGmailChannel implements Channel {
   /**
    * Determine if email should still be sent to main group for traditional processing
    */
-  private shouldSendToMainGroup(_classification: ClassificationResult): boolean {
+  private shouldSendToMainGroup(
+    _classification: ClassificationResult,
+  ): boolean {
     // DISABLED: Do NOT auto-feed emails to Andy. He was sending replies
     // without David's approval. Emails go to Discord triage only.
     // David reviews and tells Andy what to do via Telegram.

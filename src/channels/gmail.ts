@@ -211,6 +211,12 @@ export class GmailChannel implements Channel {
         this.processedIds = new Set(ids.slice(ids.length - 2500));
       }
 
+      // Cap thread metadata to prevent memory leak
+      if (this.threadMeta.size > 5000) {
+        const entries = [...this.threadMeta.entries()];
+        this.threadMeta = new Map(entries.slice(entries.length - 2500));
+      }
+
       this.consecutiveErrors = 0;
     } catch (err) {
       this.consecutiveErrors++;

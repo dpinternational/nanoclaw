@@ -2,7 +2,7 @@ import { ChildProcess } from 'child_process';
 import { CronExpressionParser } from 'cron-parser';
 import fs from 'fs';
 
-import { ASSISTANT_NAME, SCHEDULER_POLL_INTERVAL, TIMEZONE } from './config.js';
+import { ADMIN_CHAT_JID, ASSISTANT_NAME, SCHEDULER_POLL_INTERVAL, TIMEZONE } from './config.js';
 import {
   ContainerOutput,
   runContainerAgent,
@@ -93,10 +93,12 @@ async function runTask(
       'Task has invalid group folder',
     );
     // Alert David when a task gets paused
-    deps.sendMessage(
-      'tg:577469008',
-      `⚠️ Scheduled task "${task.id}" was paused: ${error}`,
-    ).catch(() => {});
+    deps
+      .sendMessage(
+        ADMIN_CHAT_JID,
+        `⚠️ Scheduled task "${task.id}" was paused: ${error}`,
+      )
+      .catch(() => {});
     logTaskRun({
       task_id: task.id,
       run_at: new Date().toISOString(),
@@ -237,10 +239,12 @@ async function runTask(
 
   // Alert on task failure
   if (error) {
-    deps.sendMessage(
-      'tg:577469008',
-      `⚠️ Task "${task.id}" failed: ${error.slice(0, 150)}`,
-    ).catch(() => {});
+    deps
+      .sendMessage(
+        ADMIN_CHAT_JID,
+        `⚠️ Task "${task.id}" failed: ${error.slice(0, 150)}`,
+      )
+      .catch(() => {});
   }
 
   const nextRun = computeNextRun(task);
@@ -322,10 +326,12 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
                   { taskId: task.id },
                   'Auto-recovered paused recurring task',
                 );
-                deps.sendMessage(
-                  'tg:577469008',
-                  `🔄 Auto-recovered paused task "${task.id}" — it will retry at its next scheduled time.`,
-                ).catch(() => {});
+                deps
+                  .sendMessage(
+                    ADMIN_CHAT_JID,
+                    `🔄 Auto-recovered paused task "${task.id}" — it will retry at its next scheduled time.`,
+                  )
+                  .catch(() => {});
               }
             }
           }

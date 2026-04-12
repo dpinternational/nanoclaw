@@ -1,9 +1,10 @@
 import fs from 'fs';
+import fsp from 'fs/promises';
 import path from 'path';
 
 import { CronExpressionParser } from 'cron-parser';
 
-import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
+import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE, ADMIN_CHAT_JID } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
@@ -41,10 +42,10 @@ export function startIpcWatcher(deps: IpcDeps): void {
     // Scan all group IPC directories (identity determined by directory)
     let groupFolders: string[];
     try {
-      groupFolders = fs.readdirSync(ipcBaseDir).filter((f) => {
-        const stat = fs.statSync(path.join(ipcBaseDir, f));
-        return stat.isDirectory() && f !== 'errors';
-      });
+      const entries = await fsp.readdir(ipcBaseDir, { withFileTypes: true });
+      groupFolders = entries
+        .filter((e) => e.isDirectory() && e.name !== 'errors')
+        .map((e) => e.name);
     } catch (err) {
       logger.error({ err }, 'Error reading IPC base directory');
       setTimeout(processIpcFiles, IPC_POLL_INTERVAL);
@@ -155,7 +156,11 @@ export function startIpcWatcher(deps: IpcDeps): void {
                 { file, sourceGroup, err },
                 'Error processing email draft',
               );
-              try { fs.unlinkSync(filePath); } catch { /* already deleted */ }
+              try {
+                fs.unlinkSync(filePath);
+              } catch {
+                /* already deleted */
+              }
             }
           }
         }
@@ -335,10 +340,12 @@ export async function processTaskIpc(
             { taskId: data.taskId, sourceGroup },
             'Task paused via IPC',
           );
-          deps.sendMessage(
-            'tg:577469008',
-            `⚠️ Task "${data.taskId}" was paused by agent in ${sourceGroup}`,
-          ).catch(() => {});
+          deps
+            .sendMessage(
+              ADMIN_CHAT_JID,
+              `⚠️ Task "${data.taskId}" was paused by agent in ${sourceGroup}`,
+            )
+            .catch(() => {});
           deps.onTasksChanged();
         } else {
           logger.warn(

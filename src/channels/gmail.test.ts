@@ -65,7 +65,7 @@ describe('GmailChannel', () => {
       const query = (
         ch as unknown as { buildQuery: () => string }
       ).buildQuery();
-      expect(query).toBe('is:unread category:primary');
+      expect(query).toBe('in:inbox');
     });
 
     it('defaults with no options provided', () => {
