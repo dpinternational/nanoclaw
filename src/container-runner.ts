@@ -197,24 +197,42 @@ function buildVolumeMounts(
   });
 
   // Gmail credentials directory (for Gmail MCP inside the container)
+  // SECURITY: Copy into per-group writable directory instead of bind-mounting
+  // host originals. Containers can refresh OAuth tokens on their copy without
+  // being able to tamper with host credential files.
   const homeDir = os.homedir();
   const gmailDir = path.join(homeDir, '.gmail-mcp');
   if (fs.existsSync(gmailDir)) {
+    const groupGmailDir = path.join(
+      DATA_DIR,
+      'sessions',
+      group.folder,
+      'gmail-mcp-creds',
+    );
+    fs.cpSync(gmailDir, groupGmailDir, { recursive: true });
     mounts.push({
-      hostPath: gmailDir,
+      hostPath: groupGmailDir,
       containerPath: '/home/node/.gmail-mcp',
-      readonly: false, // MCP may need to refresh OAuth tokens
+      readonly: false,
     });
   }
 
   // Google Workspace CLI credentials (for gws inside the container)
+  // SECURITY: Same copy-on-launch pattern — never mount host creds read-write.
   const gwsCredFile = path.join(homeDir, '.config', 'gws', 'credentials.json');
   if (fs.existsSync(gwsCredFile)) {
     const gwsDir = path.join(homeDir, '.config', 'gws');
+    const groupGwsDir = path.join(
+      DATA_DIR,
+      'sessions',
+      group.folder,
+      'gws-creds',
+    );
+    fs.cpSync(gwsDir, groupGwsDir, { recursive: true });
     mounts.push({
-      hostPath: gwsDir,
+      hostPath: groupGwsDir,
       containerPath: '/home/node/.config/gws',
-      readonly: false, // gws needs write access for token refresh and cache
+      readonly: false,
     });
   }
 
