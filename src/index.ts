@@ -224,16 +224,30 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
           ? result.result
           : JSON.stringify(result.result);
       // Strip <internal>...</internal> blocks and stray tags — agent uses these for internal reasoning
-      let text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').replace(/<\/?internal>/g, '').trim();
+      let text = raw
+        .replace(/<internal>[\s\S]*?<\/internal>/g, '')
+        .replace(/<\/?internal>/g, '')
+        .trim();
       // Strip em dashes, en dashes, and double hyphens from content groups
-      if (group.folder === 'telegram_braindump' || group.folder === 'telegram_va_desk' || group.folder === 'telegram_content_ideas') {
-        text = text.replace(/\s*[—–]\s*/g, '. ').replace(/\s*--\s*/g, '. ').replace(/\.\./g, '.').trim();
+      if (
+        group.folder === 'telegram_braindump' ||
+        group.folder === 'telegram_va_desk' ||
+        group.folder === 'telegram_content_ideas'
+      ) {
+        text = text
+          .replace(/\s*[—–]\s*/g, '. ')
+          .replace(/\s*--\s*/g, '. ')
+          .replace(/\.\./g, '.')
+          .trim();
       }
       // TPG UnCaged: HARD LIMIT — only the FIRST message per container session gets through.
       // Everything else (self-reviews, duplicate drafts, stray output) is killed.
       if (group.folder === 'telegram_tpg_uncaged') {
         if (tpgMessagesSent >= 1) {
-          logger.info({ group: group.name, blocked: text.substring(0, 80) }, 'Blocked extra TPG output');
+          logger.info(
+            { group: group.name, blocked: text.substring(0, 80) },
+            'Blocked extra TPG output',
+          );
           text = '';
         }
       }

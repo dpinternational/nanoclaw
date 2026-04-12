@@ -484,10 +484,7 @@ export function updateTaskAfterRun(
  * Check if a task ran recently (within the given window in ms).
  * Used to prevent duplicate task execution when multiple instances exist.
  */
-export function getRecentTaskRun(
-  taskId: string,
-  windowMs: number,
-): boolean {
+export function getRecentTaskRun(taskId: string, windowMs: number): boolean {
   const cutoff = new Date(Date.now() - windowMs).toISOString();
   const row = db
     .prepare(

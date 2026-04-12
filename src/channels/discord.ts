@@ -457,10 +457,14 @@ export class DiscordChannel implements Channel {
       // SECURITY: Load from project scripts/, NOT from container-writable workspace
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = path.dirname(__filename);
-      const handlerPath = path.join(__dirname, '..', '..', 'scripts', 'email-reaction-handler.cjs');
-      const {
-        handleEmailReaction,
-      } = require(handlerPath);
+      const handlerPath = path.join(
+        __dirname,
+        '..',
+        '..',
+        'scripts',
+        'email-reaction-handler.cjs',
+      );
+      const { handleEmailReaction } = require(handlerPath);
 
       await handleEmailReaction(message.content || '', reactionEmoji, user.id);
 

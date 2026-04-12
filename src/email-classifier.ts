@@ -526,7 +526,12 @@ export class EmailClassificationEngine {
     // Gmail already classifies promos/social/updates — trust it
     const labels = (email as { labels?: string[] }).labels || [];
     const isGmailPromo = labels.some((l: string) =>
-      ['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_SOCIAL', 'SPAM'].includes(l),
+      [
+        'CATEGORY_PROMOTIONS',
+        'CATEGORY_UPDATES',
+        'CATEGORY_SOCIAL',
+        'SPAM',
+      ].includes(l),
     );
     if (isGmailPromo) {
       return Priority.LOW;

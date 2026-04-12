@@ -76,10 +76,7 @@ function loadSenderAllowlistCached(
   return _cachedConfig;
 }
 
-function loadSenderAllowlistFromDisk(
-  filePath: string,
-): SenderAllowlistConfig {
-
+function loadSenderAllowlistFromDisk(filePath: string): SenderAllowlistConfig {
   let raw: string;
   try {
     raw = fs.readFileSync(filePath, 'utf-8');

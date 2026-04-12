@@ -227,10 +227,13 @@ export class WebhookServer {
         const keyPath = path.join(certDir, 'webhook.key');
         if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
           logger.info({ certPath }, 'Starting webhook server with HTTPS');
-          this.server = https.createServer({
-            cert: fs.readFileSync(certPath),
-            key: fs.readFileSync(keyPath),
-          }, this.app);
+          this.server = https.createServer(
+            {
+              cert: fs.readFileSync(certPath),
+              key: fs.readFileSync(keyPath),
+            },
+            this.app,
+          );
         } else {
           this.server = http.createServer(this.app);
         }

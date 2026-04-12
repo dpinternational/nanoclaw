@@ -345,7 +345,15 @@ export class TelegramChannel implements Channel {
         // Get video duration
         const durationStr = execFileSync(
           'ffprobe',
-          ['-v', 'quiet', '-show_entries', 'format=duration', '-of', 'csv=p=0', tmpVideo],
+          [
+            '-v',
+            'quiet',
+            '-show_entries',
+            'format=duration',
+            '-of',
+            'csv=p=0',
+            tmpVideo,
+          ],
           { encoding: 'utf-8', timeout: 10000 },
         ).trim();
         const duration = parseFloat(durationStr) || 10;
@@ -366,7 +374,20 @@ export class TelegramChannel implements Channel {
           try {
             execFileSync(
               'ffmpeg',
-              ['-y', '-ss', String(frameTimestamps[i]), '-i', tmpVideo, '-vframes', '1', '-q:v', '3', framePath, '-loglevel', 'error'],
+              [
+                '-y',
+                '-ss',
+                String(frameTimestamps[i]),
+                '-i',
+                tmpVideo,
+                '-vframes',
+                '1',
+                '-q:v',
+                '3',
+                framePath,
+                '-loglevel',
+                'error',
+              ],
               { timeout: 10000 },
             );
             if (
@@ -399,7 +420,19 @@ export class TelegramChannel implements Channel {
       try {
         execFileSync(
           'ffmpeg',
-          ['-y', '-i', tmpVideo, '-vn', '-acodec', 'libopus', '-b:a', '48k', tmpAudio, '-loglevel', 'error'],
+          [
+            '-y',
+            '-i',
+            tmpVideo,
+            '-vn',
+            '-acodec',
+            'libopus',
+            '-b:a',
+            '48k',
+            tmpAudio,
+            '-loglevel',
+            'error',
+          ],
           { timeout: 30000 },
         );
 

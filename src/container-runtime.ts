@@ -40,8 +40,10 @@ function detectProxyBindHost(): string {
   // SECURITY: Never fall back to 0.0.0.0 -- that exposes the credential proxy
   // to the entire network. Use localhost and require manual CREDENTIAL_PROXY_HOST
   // configuration if docker0 isn't available.
-  logger.warn('docker0 interface not found on Linux; credential proxy binding to 127.0.0.1. '
-    + 'Set CREDENTIAL_PROXY_HOST to the docker bridge IP if containers cannot reach the proxy.');
+  logger.warn(
+    'docker0 interface not found on Linux; credential proxy binding to 127.0.0.1. ' +
+      'Set CREDENTIAL_PROXY_HOST to the docker bridge IP if containers cannot reach the proxy.',
+  );
   return '127.0.0.1';
 }
 
