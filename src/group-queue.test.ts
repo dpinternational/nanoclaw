@@ -9,6 +9,20 @@ vi.mock('./config.js', () => ({
 }));
 
 // Mock fs operations used by sendMessage/closeStdin
+vi.mock('fs/promises', async () => {
+  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  return {
+    ...actual,
+    default: {
+      ...actual,
+      mkdir: vi.fn(async () => {}),
+      writeFile: vi.fn(async () => {}),
+      rename: vi.fn(async () => {}),
+    },
+  };
+});
+
+// Keep fs mock for any remaining sync usage
 vi.mock('fs', async () => {
   const actual = await vi.importActual<typeof import('fs')>('fs');
   return {
@@ -347,14 +361,18 @@ describe('GroupQueue', () => {
     queue.notifyIdle('group1@g.us');
 
     // Clear previous writes, then enqueue a task
-    const writeFileSync = vi.mocked(fs.default.writeFileSync);
-    writeFileSync.mockClear();
+    const fspMod = await import('fs/promises');
+    const writeFile = vi.mocked(fspMod.default.writeFile);
+    writeFile.mockClear();
 
     const taskFn = vi.fn(async () => {});
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
+    // Allow async closeStdin to settle
+    await vi.advanceTimersByTimeAsync(10);
+
     // _close SHOULD have been written (container is idle)
-    const closeWrites = writeFileSync.mock.calls.filter(
+    const closeWrites = writeFile.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
     expect(closeWrites).toHaveLength(1);
@@ -388,16 +406,20 @@ describe('GroupQueue', () => {
     queue.notifyIdle('group1@g.us');
 
     // A new user message arrives — resets idleWaiting
-    queue.sendMessage('group1@g.us', 'hello');
+    await queue.sendMessage('group1@g.us', 'hello');
 
     // Task enqueued after message reset — should NOT preempt (agent is working)
-    const writeFileSync = vi.mocked(fs.default.writeFileSync);
-    writeFileSync.mockClear();
+    const fspMod = await import('fs/promises');
+    const writeFile = vi.mocked(fspMod.default.writeFile);
+    writeFile.mockClear();
 
     const taskFn = vi.fn(async () => {});
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
-    const closeWrites = writeFileSync.mock.calls.filter(
+    // Allow any pending promises (from async closeStdin) to settle
+    await vi.advanceTimersByTimeAsync(10);
+
+    const closeWrites = writeFile.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
     expect(closeWrites).toHaveLength(0);
@@ -426,7 +448,7 @@ describe('GroupQueue', () => {
     );
 
     // sendMessage should return false — user messages must not go to task containers
-    const result = queue.sendMessage('group1@g.us', 'hello');
+    const result = await queue.sendMessage('group1@g.us', 'hello');
     expect(result).toBe(false);
 
     resolveTask!();
@@ -434,7 +456,7 @@ describe('GroupQueue', () => {
   });
 
   it('preempts when idle arrives with pending tasks', async () => {
-    const fs = await import('fs');
+    const fspMod = await import('fs/promises');
     let resolveProcess: () => void;
 
     const processMessages = vi.fn(async () => {
@@ -458,22 +480,28 @@ describe('GroupQueue', () => {
       'test-group',
     );
 
-    const writeFileSync = vi.mocked(fs.default.writeFileSync);
-    writeFileSync.mockClear();
+    const writeFile = vi.mocked(fspMod.default.writeFile);
+    writeFile.mockClear();
 
     const taskFn = vi.fn(async () => {});
     queue.enqueueTask('group1@g.us', 'task-1', taskFn);
 
-    let closeWrites = writeFileSync.mock.calls.filter(
+    // Allow any pending promises to settle
+    await vi.advanceTimersByTimeAsync(10);
+
+    let closeWrites = writeFile.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
     expect(closeWrites).toHaveLength(0);
 
     // Now container becomes idle — should preempt because task is pending
-    writeFileSync.mockClear();
+    writeFile.mockClear();
     queue.notifyIdle('group1@g.us');
 
-    closeWrites = writeFileSync.mock.calls.filter(
+    // Allow async closeStdin to settle
+    await vi.advanceTimersByTimeAsync(10);
+
+    closeWrites = writeFile.mock.calls.filter(
       (call) => typeof call[0] === 'string' && call[0].endsWith('_close'),
     );
     expect(closeWrites).toHaveLength(1);

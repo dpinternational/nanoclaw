@@ -1,5 +1,5 @@
 import { ChildProcess } from 'child_process';
-import fs from 'fs';
+import fsp from 'fs/promises';
 import path from 'path';
 
 import { DATA_DIR, MAX_CONCURRENT_CONTAINERS } from './config.js';
@@ -108,7 +108,7 @@ export class GroupQueue {
     if (state.active) {
       state.pendingTasks.push({ id: taskId, groupJid, fn });
       if (state.idleWaiting) {
-        this.closeStdin(groupJid);
+        this.closeStdin(groupJid).catch(() => {});
       }
       logger.debug({ groupJid, taskId }, 'Container active, task queued');
       return;
@@ -152,7 +152,7 @@ export class GroupQueue {
     const state = this.getGroup(groupJid);
     state.idleWaiting = true;
     if (state.pendingTasks.length > 0) {
-      this.closeStdin(groupJid);
+      this.closeStdin(groupJid).catch(() => {});
     }
   }
 
@@ -160,7 +160,7 @@ export class GroupQueue {
    * Send a follow-up message to the active container via IPC file.
    * Returns true if the message was written, false if no active container.
    */
-  sendMessage(groupJid: string, text: string): boolean {
+  async sendMessage(groupJid: string, text: string): Promise<boolean> {
     const state = this.getGroup(groupJid);
     if (!state.active || !state.groupFolder || state.isTaskContainer)
       return false;
@@ -168,12 +168,12 @@ export class GroupQueue {
 
     const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
     try {
-      fs.mkdirSync(inputDir, { recursive: true });
+      await fsp.mkdir(inputDir, { recursive: true });
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
       const filepath = path.join(inputDir, filename);
       const tempPath = `${filepath}.tmp`;
-      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
-      fs.renameSync(tempPath, filepath);
+      await fsp.writeFile(tempPath, JSON.stringify({ type: 'message', text }));
+      await fsp.rename(tempPath, filepath);
       return true;
     } catch {
       return false;
@@ -205,14 +205,14 @@ export class GroupQueue {
   /**
    * Signal the active container to wind down by writing a close sentinel.
    */
-  closeStdin(groupJid: string): void {
+  async closeStdin(groupJid: string): Promise<void> {
     const state = this.getGroup(groupJid);
     if (!state.active || !state.groupFolder) return;
 
     const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
     try {
-      fs.mkdirSync(inputDir, { recursive: true });
-      fs.writeFileSync(path.join(inputDir, '_close'), '');
+      await fsp.mkdir(inputDir, { recursive: true });
+      await fsp.writeFile(path.join(inputDir, '_close'), '');
     } catch {
       // ignore
     }

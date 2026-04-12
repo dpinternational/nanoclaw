@@ -70,16 +70,19 @@ export function startIpcWatcher(deps: IpcDeps): void {
       const messagesDir = path.join(ipcBaseDir, sourceGroup, 'messages');
       const tasksDir = path.join(ipcBaseDir, sourceGroup, 'tasks');
 
-      // Process messages from this group's IPC directory
-      try {
-        if (fs.existsSync(messagesDir)) {
-          const messageFiles = fs
-            .readdirSync(messagesDir)
-            .filter((f) => f.endsWith('.json'));
+     // Process messages from this group's IPC directory
+     try {
+        let messageFiles: string[] = [];
+        try {
+          messageFiles = (await fsp.readdir(messagesDir)).filter((f) => f.endsWith('.json'));
+        } catch {
+          // directory doesn't exist — no messages
+        }
+        if (messageFiles.length > 0) {
           for (const file of messageFiles) {
             const filePath = path.join(messagesDir, file);
             try {
-              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              const data = JSON.parse(await fsp.readFile(filePath, 'utf-8'));
               if (data.type === 'message' && data.chatJid && data.text) {
                 // Authorization: verify this group can send to this chatJid
                 const targetGroup = registeredGroups[data.chatJid];
@@ -99,15 +102,15 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   );
                 }
               }
-              fs.unlinkSync(filePath);
+              await fsp.unlink(filePath);
             } catch (err) {
               logger.error(
                 { file, sourceGroup, err },
                 'Error processing IPC message',
               );
               const errorDir = path.join(ipcBaseDir, 'errors');
-              fs.mkdirSync(errorDir, { recursive: true });
-              fs.renameSync(
+              await fsp.mkdir(errorDir, { recursive: true });
+              await fsp.rename(
                 filePath,
                 path.join(errorDir, `${sourceGroup}-${file}`),
               );
@@ -124,14 +127,17 @@ export function startIpcWatcher(deps: IpcDeps): void {
       // Process email drafts awaiting approval
       const emailDraftsDir = path.join(ipcBaseDir, sourceGroup, 'email_drafts');
       try {
-        if (fs.existsSync(emailDraftsDir)) {
-          const draftFiles = fs
-            .readdirSync(emailDraftsDir)
-            .filter((f) => f.endsWith('.json'));
+        let draftFiles: string[] = [];
+        try {
+          draftFiles = (await fsp.readdir(emailDraftsDir)).filter((f) => f.endsWith('.json'));
+        } catch {
+          // directory doesn't exist — no drafts
+        }
+        if (draftFiles.length > 0) {
           for (const file of draftFiles) {
             const filePath = path.join(emailDraftsDir, file);
             try {
-              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              const data = JSON.parse(await fsp.readFile(filePath, 'utf-8'));
               if (data.type === 'email_draft') {
                 // Find main group JID to notify David
                 const mainEntry = Object.entries(registeredGroups).find(
@@ -155,14 +161,14 @@ export function startIpcWatcher(deps: IpcDeps): void {
                   );
                 }
               }
-              fs.unlinkSync(filePath);
+              await fsp.unlink(filePath);
             } catch (err) {
               logger.error(
                 { file, sourceGroup, err },
                 'Error processing email draft',
               );
               try {
-                fs.unlinkSync(filePath);
+                await fsp.unlink(filePath);
               } catch {
                 /* already deleted */
               }
@@ -178,25 +184,28 @@ export function startIpcWatcher(deps: IpcDeps): void {
 
       // Process tasks from this group's IPC directory
       try {
-        if (fs.existsSync(tasksDir)) {
-          const taskFiles = fs
-            .readdirSync(tasksDir)
-            .filter((f) => f.endsWith('.json'));
+        let taskFiles: string[] = [];
+        try {
+          taskFiles = (await fsp.readdir(tasksDir)).filter((f) => f.endsWith('.json'));
+        } catch {
+          // directory doesn't exist — no tasks
+        }
+        if (taskFiles.length > 0) {
           for (const file of taskFiles) {
             const filePath = path.join(tasksDir, file);
             try {
-              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              const data = JSON.parse(await fsp.readFile(filePath, 'utf-8'));
               // Pass source group identity to processTaskIpc for authorization
               await processTaskIpc(data, sourceGroup, isMain, deps);
-              fs.unlinkSync(filePath);
+              await fsp.unlink(filePath);
             } catch (err) {
               logger.error(
                 { file, sourceGroup, err },
                 'Error processing IPC task',
               );
               const errorDir = path.join(ipcBaseDir, 'errors');
-              fs.mkdirSync(errorDir, { recursive: true });
-              fs.renameSync(
+              await fsp.mkdir(errorDir, { recursive: true });
+              await fsp.rename(
                 filePath,
                 path.join(errorDir, `${sourceGroup}-${file}`),
               );
