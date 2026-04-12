@@ -4,7 +4,14 @@
  */
 
 import { logger } from './logger.js';
-import { EmailMetadata, ClassificationResult, EmailCategory, Priority, UrgencyLevel, EmailAction } from './email-classifier.js';
+import {
+  EmailMetadata,
+  ClassificationResult,
+  EmailCategory,
+  Priority,
+  UrgencyLevel,
+  EmailAction,
+} from './email-classifier.js';
 
 export interface DiscordChannelConfig {
   id: string;
@@ -44,18 +51,20 @@ export class DiscordEmailRouter {
     const emailTriageChannelId = '1484839736609607832'; // DOS #email-triage channel
 
     // Map all categories to the single email-triage channel with priority-based formatting
-    Object.values(EmailCategory).forEach(category => {
+    Object.values(EmailCategory).forEach((category) => {
       this.channels.set(category, {
         id: emailTriageChannelId,
         name: 'email-triage',
         purpose: 'Unified inbox zero automation with smart priority formatting',
         alertLevel: this.getAlertLevelForCategory(category),
-        formatStyle: 'priority_unified'
+        formatStyle: 'priority_unified',
       });
     });
   }
 
-  private getAlertLevelForCategory(category: EmailCategory): 'silent' | 'normal' | 'mention' | 'urgent' {
+  private getAlertLevelForCategory(
+    category: EmailCategory,
+  ): 'silent' | 'normal' | 'mention' | 'urgent' {
     switch (category) {
       case EmailCategory.BUSINESS_CRITICAL:
         return 'urgent';
@@ -77,28 +86,43 @@ export class DiscordEmailRouter {
   /**
    * Route classified email to appropriate Discord channel
    */
-  public async routeEmail(email: EmailMetadata, classification: ClassificationResult): Promise<DiscordMessage> {
+  public async routeEmail(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): Promise<DiscordMessage> {
     const channelConfig = this.channels.get(classification.category);
     if (!channelConfig) {
-      throw new Error(`No Discord channel configured for category: ${classification.category}`);
+      throw new Error(
+        `No Discord channel configured for category: ${classification.category}`,
+      );
     }
 
-    const message = this.formatEmailMessage(email, classification, channelConfig);
+    const message = this.formatEmailMessage(
+      email,
+      classification,
+      channelConfig,
+    );
 
     // Mark message as needing numbered reactions for triage
     (message as any).needsTriageReactions = true;
 
     // Handle escalation if configured
-    if (classification.escalation && this.shouldEscalate(email.id, classification.escalation)) {
+    if (
+      classification.escalation &&
+      this.shouldEscalate(email.id, classification.escalation)
+    ) {
       await this.handleEscalation(email, classification, message);
     }
 
-    logger.info({
-      emailId: email.id,
-      category: classification.category,
-      priority: classification.priority,
-      channelId: channelConfig.id
-    }, 'Email routed to Discord channel');
+    logger.info(
+      {
+        emailId: email.id,
+        category: classification.category,
+        priority: classification.priority,
+        channelId: channelConfig.id,
+      },
+      'Email routed to Discord channel',
+    );
 
     return message;
   }
@@ -109,13 +133,13 @@ export class DiscordEmailRouter {
   private formatEmailMessage(
     email: EmailMetadata,
     classification: ClassificationResult,
-    channelConfig: DiscordChannelConfig
+    channelConfig: DiscordChannelConfig,
   ): DiscordMessage {
     const message: DiscordMessage = {
       channelId: channelConfig.id,
       content: '',
       mentions: [],
-      embeds: []
+      embeds: [],
     };
 
     // Determine mentions based on alert level and urgency
@@ -124,7 +148,11 @@ export class DiscordEmailRouter {
     // Format based on style
     switch (channelConfig.formatStyle) {
       case 'priority_unified':
-        return this.formatPriorityUnifiedMessage(email, classification, message);
+        return this.formatPriorityUnifiedMessage(
+          email,
+          classification,
+          message,
+        );
       case 'full':
         return this.formatFullMessage(email, classification, message);
       case 'summary':
@@ -132,7 +160,11 @@ export class DiscordEmailRouter {
       case 'minimal':
         return this.formatMinimalMessage(email, classification, message);
       default:
-        return this.formatPriorityUnifiedMessage(email, classification, message);
+        return this.formatPriorityUnifiedMessage(
+          email,
+          classification,
+          message,
+        );
     }
 
     return message;
@@ -141,7 +173,7 @@ export class DiscordEmailRouter {
   private formatFullMessage(
     email: EmailMetadata,
     classification: ClassificationResult,
-    message: DiscordMessage
+    message: DiscordMessage,
   ): DiscordMessage {
     const urgencyEmoji = this.getUrgencyEmoji(classification.urgency);
     const priorityEmoji = this.getPriorityEmoji(classification.priority);
@@ -155,26 +187,26 @@ export class DiscordEmailRouter {
         {
           name: '📧 From',
           value: `${email.fromName || email.from}\n\`${email.from}\``,
-          inline: true
+          inline: true,
         },
         {
           name: '⏰ Priority',
           value: `${classification.priority}\n${classification.urgency}`,
-          inline: true
+          inline: true,
         },
         {
           name: '🎯 Confidence',
           value: `${Math.round(classification.confidence * 100)}%`,
-          inline: true
+          inline: true,
         },
         {
           name: '📝 Reason',
           value: classification.reason,
-          inline: false
-        }
+          inline: false,
+        },
       ],
       timestamp: email.timestamp,
-      footer: { text: `Email ID: ${email.id}` }
+      footer: { text: `Email ID: ${email.id}` },
     };
 
     // Add content preview if available
@@ -183,7 +215,7 @@ export class DiscordEmailRouter {
       embed.fields!.push({
         name: '📖 Preview',
         value: `\`\`\`\n${preview}${email.content.length > 300 ? '...' : ''}\n\`\`\``,
-        inline: false
+        inline: false,
       });
     }
 
@@ -191,7 +223,8 @@ export class DiscordEmailRouter {
 
     // Add action buttons instruction
     const actionText = this.getActionText(classification.action);
-    message.content = `${message.mentions?.join(' ') || ''}\n${actionText}`.trim();
+    message.content =
+      `${message.mentions?.join(' ') || ''}\n${actionText}`.trim();
 
     return message;
   }
@@ -199,7 +232,7 @@ export class DiscordEmailRouter {
   private formatSummaryMessage(
     email: EmailMetadata,
     classification: ClassificationResult,
-    message: DiscordMessage
+    message: DiscordMessage,
   ): DiscordMessage {
     const urgencyEmoji = this.getUrgencyEmoji(classification.urgency);
     const priorityEmoji = this.getPriorityEmoji(classification.priority);
@@ -212,7 +245,7 @@ export class DiscordEmailRouter {
       `**Reason:** ${classification.reason}`,
       `**Email ID:** \`${email.id}\``,
       '',
-      this.getActionText(classification.action)
+      this.getActionText(classification.action),
     ].join('\n');
 
     if (message.mentions && message.mentions.length > 0) {
@@ -225,14 +258,14 @@ export class DiscordEmailRouter {
   private formatMinimalMessage(
     email: EmailMetadata,
     classification: ClassificationResult,
-    message: DiscordMessage
+    message: DiscordMessage,
   ): DiscordMessage {
     const urgencyEmoji = this.getUrgencyEmoji(classification.urgency);
 
     message.content = [
       `${urgencyEmoji} **${classification.category.replace('_', ' ')}** from ${email.fromName || email.from}`,
       `📧 ${email.subject}`,
-      `\`${email.id}\``
+      `\`${email.id}\``,
     ].join('\n');
 
     return message;
@@ -244,14 +277,18 @@ export class DiscordEmailRouter {
   private formatPriorityUnifiedMessage(
     email: EmailMetadata,
     classification: ClassificationResult,
-    message: DiscordMessage
+    message: DiscordMessage,
   ): DiscordMessage {
-    const priorityConfig = this.getPriorityDisplayConfig(classification.priority, classification.urgency);
+    const priorityConfig = this.getPriorityDisplayConfig(
+      classification.priority,
+      classification.urgency,
+    );
 
     // Build main message content with visual hierarchy
-    const mentionLine = message.mentions && message.mentions.length > 0
-      ? `${message.mentions.join(' ')}\n\n`
-      : '';
+    const mentionLine =
+      message.mentions && message.mentions.length > 0
+        ? `${message.mentions.join(' ')}\n\n`
+        : '';
 
     const headerLine = `${priorityConfig.emoji} **${priorityConfig.label}** - ${this.getCategoryDisplayName(classification.category)}`;
 
@@ -260,12 +297,15 @@ export class DiscordEmailRouter {
       `📧 **From:** ${email.fromName || email.from}`,
       `📝 **Subject:** ${email.subject}`,
       `⏰ **Received:** ${this.formatTimestamp(email.timestamp)}`,
-      `🎯 **Action:** ${this.getSimplifiedAction(classification.action, classification.urgency)}`
+      `🎯 **Action:** ${this.getSimplifiedAction(classification.action, classification.urgency)}`,
     ];
 
     // Add content preview for higher priority items
     let contentPreview = '';
-    if (classification.priority === Priority.CRITICAL || classification.priority === Priority.HIGH) {
+    if (
+      classification.priority === Priority.CRITICAL ||
+      classification.priority === Priority.HIGH
+    ) {
       if (email.content) {
         const preview = email.content.substring(0, 200);
         contentPreview = `\n\n**Preview:** \`${preview}${email.content.length > 200 ? '...' : ''}\``;
@@ -291,13 +331,18 @@ export class DiscordEmailRouter {
       contentPreview,
       contextInfo,
       actionButtons,
-      emailRef
-    ].filter(Boolean).join('');
+      emailRef,
+    ]
+      .filter(Boolean)
+      .join('');
 
     return message;
   }
 
-  private getPriorityDisplayConfig(priority: Priority, urgency: UrgencyLevel): {
+  private getPriorityDisplayConfig(
+    priority: Priority,
+    urgency: UrgencyLevel,
+  ): {
     emoji: string;
     label: string;
     color: string;
@@ -307,37 +352,37 @@ export class DiscordEmailRouter {
         return {
           emoji: '🚨 **RED**',
           label: 'CRITICAL',
-          color: 'RED'
+          color: 'RED',
         };
       case Priority.HIGH:
         return {
           emoji: '🟡 **YELLOW**',
           label: 'IMPORTANT',
-          color: 'YELLOW'
+          color: 'YELLOW',
         };
       case Priority.MEDIUM:
         return {
           emoji: '🟢 **GREEN**',
           label: 'MEDIUM',
-          color: 'GREEN'
+          color: 'GREEN',
         };
       case Priority.LOW:
         return {
           emoji: '🟢 **GREEN**',
           label: 'FYI',
-          color: 'GREEN'
+          color: 'GREEN',
         };
       case Priority.ARCHIVE:
         return {
           emoji: '📦',
           label: 'ARCHIVED',
-          color: 'GRAY'
+          color: 'GRAY',
         };
       default:
         return {
           emoji: '🟢 **GREEN**',
           label: 'STANDARD',
-          color: 'GREEN'
+          color: 'GREEN',
         };
     }
   }
@@ -370,7 +415,9 @@ export class DiscordEmailRouter {
   private formatTimestamp(timestamp: string): string {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60),
+    );
 
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
@@ -382,11 +429,14 @@ export class DiscordEmailRouter {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   }
 
-  private getSimplifiedAction(action: EmailAction, urgency: UrgencyLevel): string {
+  private getSimplifiedAction(
+    action: EmailAction,
+    urgency: UrgencyLevel,
+  ): string {
     switch (action) {
       case EmailAction.IMMEDIATE_ALERT:
         return 'IMMEDIATE RESPONSE NEEDED';
@@ -407,14 +457,23 @@ export class DiscordEmailRouter {
     }
   }
 
-  private determineMentions(classification: ClassificationResult, channelConfig: DiscordChannelConfig): string[] {
+  private determineMentions(
+    classification: ClassificationResult,
+    channelConfig: DiscordChannelConfig,
+  ): string[] {
     const mentions: string[] = [];
 
     // SIMPLIFIED PRIORITY-BASED MENTIONS
-    if (classification.priority === Priority.CRITICAL && classification.urgency === UrgencyLevel.IMMEDIATE) {
+    if (
+      classification.priority === Priority.CRITICAL &&
+      classification.urgency === UrgencyLevel.IMMEDIATE
+    ) {
       // 🚨 RED = Critical (immediate action) - ping @here
       mentions.push('@here');
-    } else if (classification.priority === Priority.HIGH || classification.priority === Priority.CRITICAL) {
+    } else if (
+      classification.priority === Priority.HIGH ||
+      classification.priority === Priority.CRITICAL
+    ) {
       // 🟡 YELLOW = Important (today) - mention @David
       mentions.push('<@164006671699107841>'); // Replace with actual David's Discord ID
     }
@@ -430,31 +489,46 @@ export class DiscordEmailRouter {
 
   private getUrgencyEmoji(urgency: UrgencyLevel): string {
     switch (urgency) {
-      case UrgencyLevel.IMMEDIATE: return '🚨';
-      case UrgencyLevel.FAST_TRACK: return '⚡';
-      case UrgencyLevel.STANDARD: return '📋';
-      case UrgencyLevel.BATCH: return '📝';
-      default: return '📬';
+      case UrgencyLevel.IMMEDIATE:
+        return '🚨';
+      case UrgencyLevel.FAST_TRACK:
+        return '⚡';
+      case UrgencyLevel.STANDARD:
+        return '📋';
+      case UrgencyLevel.BATCH:
+        return '📝';
+      default:
+        return '📬';
     }
   }
 
   private getPriorityEmoji(priority: Priority): string {
     switch (priority) {
-      case Priority.CRITICAL: return '🔴';
-      case Priority.HIGH: return '🟠';
-      case Priority.MEDIUM: return '🟡';
-      case Priority.LOW: return '🟢';
-      case Priority.ARCHIVE: return '📦';
+      case Priority.CRITICAL:
+        return '🔴';
+      case Priority.HIGH:
+        return '🟠';
+      case Priority.MEDIUM:
+        return '🟡';
+      case Priority.LOW:
+        return '🟢';
+      case Priority.ARCHIVE:
+        return '📦';
     }
   }
 
   private getPriorityColor(priority: Priority): number {
     switch (priority) {
-      case Priority.CRITICAL: return 0xFF0000; // Red
-      case Priority.HIGH: return 0xFF8000; // Orange
-      case Priority.MEDIUM: return 0xFFFF00; // Yellow
-      case Priority.LOW: return 0x00FF00; // Green
-      case Priority.ARCHIVE: return 0x808080; // Gray
+      case Priority.CRITICAL:
+        return 0xff0000; // Red
+      case Priority.HIGH:
+        return 0xff8000; // Orange
+      case Priority.MEDIUM:
+        return 0xffff00; // Yellow
+      case Priority.LOW:
+        return 0x00ff00; // Green
+      case Priority.ARCHIVE:
+        return 0x808080; // Gray
     }
   }
 
@@ -492,13 +566,16 @@ export class DiscordEmailRouter {
     }
 
     const timeSinceEscalation = new Date().getTime() - lastEscalation.getTime();
-    return escalationConfig.delayMs && timeSinceEscalation >= escalationConfig.delayMs;
+    return (
+      escalationConfig.delayMs &&
+      timeSinceEscalation >= escalationConfig.delayMs
+    );
   }
 
   private async handleEscalation(
     email: EmailMetadata,
     classification: ClassificationResult,
-    originalMessage: DiscordMessage
+    originalMessage: DiscordMessage,
   ): Promise<void> {
     if (!classification.escalation?.channels) return;
 
@@ -507,13 +584,16 @@ export class DiscordEmailRouter {
         channelId,
         content: `🚨 **ESCALATED EMAIL** - No response received\n\n${originalMessage.content}`,
         mentions: classification.escalation.mentions || ['@here'],
-        embeds: originalMessage.embeds
+        embeds: originalMessage.embeds,
       };
 
-      logger.info({
-        emailId: email.id,
-        escalationChannel: channelId
-      }, 'Email escalated to additional channel');
+      logger.info(
+        {
+          emailId: email.id,
+          escalationChannel: channelId,
+        },
+        'Email escalated to additional channel',
+      );
     }
 
     this.escalationHistory.set(email.id, new Date());
@@ -522,14 +602,19 @@ export class DiscordEmailRouter {
   /**
    * Get channel configuration for a category
    */
-  public getChannelConfig(category: EmailCategory): DiscordChannelConfig | undefined {
+  public getChannelConfig(
+    category: EmailCategory,
+  ): DiscordChannelConfig | undefined {
     return this.channels.get(category);
   }
 
   /**
    * Update channel configuration
    */
-  public updateChannelConfig(category: EmailCategory, config: Partial<DiscordChannelConfig>): void {
+  public updateChannelConfig(
+    category: EmailCategory,
+    config: Partial<DiscordChannelConfig>,
+  ): void {
     const existing = this.channels.get(category);
     if (existing) {
       this.channels.set(category, { ...existing, ...config });
@@ -539,59 +624,68 @@ export class DiscordEmailRouter {
   /**
    * Create summary of recent email activity
    */
-  public createActivitySummary(classifications: ClassificationResult[], timeframe: string): DiscordMessage {
+  public createActivitySummary(
+    classifications: ClassificationResult[],
+    timeframe: string,
+  ): DiscordMessage {
     const stats = {
       total: classifications.length,
-      critical: classifications.filter(c => c.priority === Priority.CRITICAL).length,
-      high: classifications.filter(c => c.priority === Priority.HIGH).length,
-      medium: classifications.filter(c => c.priority === Priority.MEDIUM).length,
-      low: classifications.filter(c => c.priority === Priority.LOW).length,
-      archived: classifications.filter(c => c.action === EmailAction.AUTO_ARCHIVE).length
+      critical: classifications.filter((c) => c.priority === Priority.CRITICAL)
+        .length,
+      high: classifications.filter((c) => c.priority === Priority.HIGH).length,
+      medium: classifications.filter((c) => c.priority === Priority.MEDIUM)
+        .length,
+      low: classifications.filter((c) => c.priority === Priority.LOW).length,
+      archived: classifications.filter(
+        (c) => c.action === EmailAction.AUTO_ARCHIVE,
+      ).length,
     };
 
     const embed: DiscordEmbed = {
       title: `📊 Email Activity Summary - ${timeframe}`,
-      color: 0x0099FF,
+      color: 0x0099ff,
       fields: [
         {
           name: '📧 Total Emails',
           value: stats.total.toString(),
-          inline: true
+          inline: true,
         },
         {
           name: '🔴 Critical',
           value: stats.critical.toString(),
-          inline: true
+          inline: true,
         },
         {
           name: '🟠 High Priority',
           value: stats.high.toString(),
-          inline: true
+          inline: true,
         },
         {
           name: '🟡 Medium Priority',
           value: stats.medium.toString(),
-          inline: true
+          inline: true,
         },
         {
           name: '🟢 Low Priority',
           value: stats.low.toString(),
-          inline: true
+          inline: true,
         },
         {
           name: '📦 Auto-Archived',
           value: stats.archived.toString(),
-          inline: true
-        }
+          inline: true,
+        },
       ],
       timestamp: new Date().toISOString(),
-      footer: { text: 'Email Classification System' }
+      footer: { text: 'Email Classification System' },
     };
 
     return {
-      channelId: this.channels.get(EmailCategory.BUSINESS_CRITICAL)?.id || '1484841234567890128', // email-triage channel
+      channelId:
+        this.channels.get(EmailCategory.BUSINESS_CRITICAL)?.id ||
+        '1484841234567890128', // email-triage channel
       content: '',
-      embeds: [embed]
+      embeds: [embed],
     };
   }
 }

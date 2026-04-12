@@ -42,7 +42,10 @@ export class TelegramApi {
     });
   }
 
-  private async makeRequest<T>(method: string, params?: Record<string, any>): Promise<T> {
+  private async makeRequest<T>(
+    method: string,
+    params?: Record<string, any>,
+  ): Promise<T> {
     const url = `${this.baseUrl}/${method}`;
 
     try {
@@ -63,45 +66,56 @@ export class TelegramApi {
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`Telegram API error (${response.status}): ${errorText}`);
+          throw new Error(
+            `Telegram API error (${response.status}): ${errorText}`,
+          );
         }
 
-        const result = await response.json() as { ok: boolean; result: T; description?: string };
+        const result = (await response.json()) as {
+          ok: boolean;
+          result: T;
+          description?: string;
+        };
 
         if (!result.ok) {
-          throw new Error(`Telegram API error: ${result.description || 'Unknown error'}`);
+          throw new Error(
+            `Telegram API error: ${result.description || 'Unknown error'}`,
+          );
         }
 
         return result.result;
-
       } catch (err) {
         clearTimeout(timeoutId);
         throw err;
       }
-
     } catch (err) {
-      logger.error({
-        method,
-        url,
-        err: err instanceof Error ? err.message : String(err)
-      }, 'Telegram API request failed');
+      logger.error(
+        {
+          method,
+          url,
+          err: err instanceof Error ? err.message : String(err),
+        },
+        'Telegram API request failed',
+      );
       throw err;
     }
   }
 
   public async setWebhook(params: TelegramSetWebhookParams): Promise<boolean> {
-    logger.info({
-      url: params.url,
-      maxConnections: params.max_connections,
-      hasSecretToken: !!params.secret_token
-    }, 'Setting Telegram webhook');
+    logger.info(
+      {
+        url: params.url,
+        maxConnections: params.max_connections,
+        hasSecretToken: !!params.secret_token,
+      },
+      'Setting Telegram webhook',
+    );
 
     try {
       const result = await this.makeRequest<boolean>('setWebhook', params);
 
       logger.info({ url: params.url }, 'Telegram webhook set successfully');
       return result;
-
     } catch (err) {
       logger.error({ err, params }, 'Failed to set Telegram webhook');
       throw err;
@@ -118,7 +132,6 @@ export class TelegramApi {
 
       logger.info('Telegram webhook deleted successfully');
       return result;
-
     } catch (err) {
       logger.error({ err }, 'Failed to delete Telegram webhook');
       throw err;
@@ -127,23 +140,30 @@ export class TelegramApi {
 
   public async getWebhookInfo(): Promise<TelegramWebhookInfo> {
     try {
-      const result = await this.makeRequest<TelegramWebhookInfo>('getWebhookInfo');
+      const result =
+        await this.makeRequest<TelegramWebhookInfo>('getWebhookInfo');
 
-      logger.debug({
-        url: result.url,
-        pendingCount: result.pending_update_count,
-        lastError: result.last_error_message
-      }, 'Webhook info retrieved');
+      logger.debug(
+        {
+          url: result.url,
+          pendingCount: result.pending_update_count,
+          lastError: result.last_error_message,
+        },
+        'Webhook info retrieved',
+      );
 
       return result;
-
     } catch (err) {
       logger.error({ err }, 'Failed to get webhook info');
       throw err;
     }
   }
 
-  public async getUpdates(offset?: number, limit = 100, timeout = 0): Promise<any[]> {
+  public async getUpdates(
+    offset?: number,
+    limit = 100,
+    timeout = 0,
+  ): Promise<any[]> {
     try {
       const result = await this.makeRequest<any[]>('getUpdates', {
         offset,
@@ -152,7 +172,6 @@ export class TelegramApi {
       });
 
       return result;
-
     } catch (err) {
       logger.error({ err, offset, limit, timeout }, 'Failed to get updates');
       throw err;

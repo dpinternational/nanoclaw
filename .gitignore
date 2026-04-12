@@ -24,6 +24,7 @@ groups/global/*
 
 # Temp files
 .tmp-*
+insurance-scraper/*.log
 
 # OS
 .DS_Store
@@ -36,3 +37,4 @@ groups/global/*
 .nanoclaw/
 
 agents-sdk-docs
+.notion-token

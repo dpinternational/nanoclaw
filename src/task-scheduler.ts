@@ -12,6 +12,7 @@ import {
   getAllTasks,
   getDueTasks,
   getTaskById,
+  getRecentTaskRun,
   logTaskRun,
   updateTask,
   updateTaskAfterRun,
@@ -91,6 +92,11 @@ async function runTask(
       { taskId: task.id, groupFolder: task.group_folder, error },
       'Task has invalid group folder',
     );
+    // Alert David when a task gets paused
+    deps.sendMessage(
+      'tg:577469008',
+      `⚠️ Scheduled task "${task.id}" was paused: ${error}`,
+    ).catch(() => {});
     logTaskRun({
       task_id: task.id,
       run_at: new Date().toISOString(),
@@ -229,6 +235,14 @@ async function runTask(
     error,
   });
 
+  // Alert on task failure
+  if (error) {
+    deps.sendMessage(
+      'tg:577469008',
+      `⚠️ Task "${task.id}" failed: ${error.slice(0, 150)}`,
+    ).catch(() => {});
+  }
+
   const nextRun = computeNextRun(task);
   const resultSummary = error
     ? `Error: ${error}`
@@ -248,6 +262,11 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
   schedulerRunning = true;
   logger.info('Scheduler loop started');
 
+  // Track when we last checked for paused tasks (check every 30 minutes)
+  let lastPausedCheck = 0;
+  const PAUSED_CHECK_INTERVAL = 2 * 60 * 1000; // check every 2 minutes
+  const AUTO_RECOVER_AFTER = 5 * 60 * 1000; // recover after 5 minutes
+
   const loop = async () => {
     try {
       const dueTasks = getDueTasks();
@@ -262,9 +281,55 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
           continue;
         }
 
+        // Dedup guard: skip if this task already ran in the last 10 minutes.
+        // Prevents duplicate messages when multiple NanoClaw instances exist.
+        const DEDUP_WINDOW_MS = 10 * 60 * 1000;
+        if (getRecentTaskRun(currentTask.id, DEDUP_WINDOW_MS)) {
+          logger.warn(
+            { taskId: currentTask.id },
+            'Task already ran recently (dedup guard) — skipping',
+          );
+          // Still advance next_run so it doesn't fire again immediately
+          const nextRun = computeNextRun(currentTask);
+          if (nextRun) {
+            updateTask(currentTask.id, { next_run: nextRun });
+          }
+          continue;
+        }
+
         deps.queue.enqueueTask(currentTask.chat_jid, currentTask.id, () =>
           runTask(currentTask, deps),
         );
+      }
+
+      // Auto-recover paused recurring tasks after 1 hour
+      const now = Date.now();
+      if (now - lastPausedCheck > PAUSED_CHECK_INTERVAL) {
+        lastPausedCheck = now;
+        const allTasks = getAllTasks();
+        for (const task of allTasks) {
+          if (
+            task.status === 'paused' &&
+            task.schedule_type === 'cron' &&
+            task.last_run
+          ) {
+            const pausedAt = new Date(task.last_run).getTime();
+            if (now - pausedAt > AUTO_RECOVER_AFTER) {
+              const nextRun = computeNextRun(task);
+              if (nextRun) {
+                updateTask(task.id, { status: 'active', next_run: nextRun });
+                logger.info(
+                  { taskId: task.id },
+                  'Auto-recovered paused recurring task',
+                );
+                deps.sendMessage(
+                  'tg:577469008',
+                  `🔄 Auto-recovered paused task "${task.id}" — it will retry at its next scheduled time.`,
+                ).catch(() => {});
+              }
+            }
+          }
+        }
       }
     } catch (err) {
       logger.error({ err }, 'Error in scheduler loop');

@@ -29,9 +29,18 @@ RUN apt-get update && apt-get install -y \
 # Set Chromium path for agent-browser
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
+ENV GOOGLE_WORKSPACE_CLI_KEYRING_BACKEND=file
 
 # Install agent-browser, claude-code, and Google Workspace CLI globally
 RUN npm install -g agent-browser @anthropic-ai/claude-code @googleworkspace/cli
+
+# Install jq for JSON handling in wrapper scripts
+RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+
+# Gate outbound email: wrap gws so send/reply/forward require approval
+RUN mv $(which gws) /usr/local/bin/gws-real
+COPY scripts/gws-wrapper.sh /usr/local/bin/gws
+RUN chmod +x /usr/local/bin/gws
 
 # Create app directory
 WORKDIR /app
@@ -49,7 +58,7 @@ COPY agent-runner/ ./
 RUN npm run build
 
 # Create workspace directories
-RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input
+RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input /workspace/ipc/email_drafts
 
 # Create entrypoint script
 # Container input (prompt, group info) is passed via stdin JSON.

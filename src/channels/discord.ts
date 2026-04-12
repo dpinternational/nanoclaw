@@ -174,13 +174,25 @@ export class DiscordChannel implements Channel {
     });
 
     // Handle message reactions for email triage
-    this.client.on(Events.MessageReactionAdd, async (reaction: MessageReaction | PartialMessageReaction, user: User | PartialUser) => {
-      await this.handleEmailTriageReaction(reaction, user, 'add');
-    });
+    this.client.on(
+      Events.MessageReactionAdd,
+      async (
+        reaction: MessageReaction | PartialMessageReaction,
+        user: User | PartialUser,
+      ) => {
+        await this.handleEmailTriageReaction(reaction, user, 'add');
+      },
+    );
 
-    this.client.on(Events.MessageReactionRemove, async (reaction: MessageReaction | PartialMessageReaction, user: User | PartialUser) => {
-      await this.handleEmailTriageReaction(reaction, user, 'remove');
-    });
+    this.client.on(
+      Events.MessageReactionRemove,
+      async (
+        reaction: MessageReaction | PartialMessageReaction,
+        user: User | PartialUser,
+      ) => {
+        await this.handleEmailTriageReaction(reaction, user, 'remove');
+      },
+    );
 
     // Handle errors gracefully
     this.client.on(Events.Error, (err) => {
@@ -222,7 +234,8 @@ export class DiscordChannel implements Channel {
       const textChannel = channel as TextChannel;
 
       // Check if this is an email triage message (new proactive system)
-      const isEmailTriageMessage = text.includes('EMAIL ') && text.includes('Quick Actions');
+      const isEmailTriageMessage =
+        text.includes('EMAIL ') && text.includes('Quick Actions');
 
       // Discord has a 2000 character limit per message — split if needed
       const MAX_LENGTH = 2000;
@@ -246,7 +259,10 @@ export class DiscordChannel implements Channel {
         await this.addProactiveEmailReactions(lastMessage);
       }
 
-      logger.info({ jid, length: text.length, isEmailTriage: isEmailTriageMessage }, 'Discord message sent');
+      logger.info(
+        { jid, length: text.length, isEmailTriage: isEmailTriageMessage },
+        'Discord message sent',
+      );
     } catch (err) {
       logger.error({ jid, err }, 'Failed to send Discord message');
     }
@@ -262,11 +278,14 @@ export class DiscordChannel implements Channel {
       for (const reaction of reactions) {
         await message.react(reaction);
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       }
       logger.info({ messageId: message.id }, 'Proactive email reactions added');
     } catch (error) {
-      logger.error({ messageId: message.id, error }, 'Failed to add proactive email reactions');
+      logger.error(
+        { messageId: message.id, error },
+        'Failed to add proactive email reactions',
+      );
     }
   }
 
@@ -280,11 +299,14 @@ export class DiscordChannel implements Channel {
       for (const reaction of reactions) {
         await message.react(reaction);
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 250));
+        await new Promise((resolve) => setTimeout(resolve, 250));
       }
       logger.info({ messageId: message.id }, 'Email triage reactions added');
     } catch (error) {
-      logger.error({ messageId: message.id, error }, 'Failed to add email triage reactions');
+      logger.error(
+        { messageId: message.id, error },
+        'Failed to add email triage reactions',
+      );
     }
   }
 
@@ -310,7 +332,7 @@ export class DiscordChannel implements Channel {
   private async handleEmailTriageReaction(
     reaction: MessageReaction | PartialMessageReaction,
     user: User | PartialUser,
-    action: 'add' | 'remove'
+    action: 'add' | 'remove',
   ): Promise<void> {
     try {
       // Ignore bot reactions
@@ -331,7 +353,17 @@ export class DiscordChannel implements Channel {
       const reactionEmoji = reaction.emoji.name;
 
       // Handle both legacy numbered reactions and new letter reactions
-      const numberReactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+      const numberReactions = [
+        '1️⃣',
+        '2️⃣',
+        '3️⃣',
+        '4️⃣',
+        '5️⃣',
+        '6️⃣',
+        '7️⃣',
+        '8️⃣',
+        '9️⃣',
+      ];
       const letterReactions = ['🅰️', '🅱️', '📅', '🗑️', '📧', '📝'];
 
       const isNumberReaction = numberReactions.includes(reactionEmoji || '');
@@ -344,7 +376,11 @@ export class DiscordChannel implements Channel {
       // Check if this is a proactive email triage message (new system)
       if (isLetterReaction && message.content?.includes('EMAIL ')) {
         if (action === 'add') {
-          await this.handleProactiveEmailReaction(reactionEmoji!, message, user);
+          await this.handleProactiveEmailReaction(
+            reactionEmoji!,
+            message,
+            user,
+          );
         }
         return;
       }
@@ -357,7 +393,10 @@ export class DiscordChannel implements Channel {
       // Extract email ID from message
       const emailIdMatch = message.content.match(/Email ID:\s*([^\s`]+)/);
       if (!emailIdMatch) {
-        logger.warn({ messageId: message.id }, 'Could not extract email ID from reaction message');
+        logger.warn(
+          { messageId: message.id },
+          'Could not extract email ID from reaction message',
+        );
         return;
       }
 
@@ -366,17 +405,25 @@ export class DiscordChannel implements Channel {
       const userName = user.username || user.displayName || 'Unknown';
 
       if (action === 'add') {
-        await this.processEmailTriageAction(emailId, reactionEmoji!, userId, userName, message);
+        await this.processEmailTriageAction(
+          emailId,
+          reactionEmoji!,
+          userId,
+          userName,
+          message,
+        );
       }
 
-      logger.info({
-        emailId,
-        action: reactionEmoji,
-        userId,
-        userName,
-        messageId: message.id
-      }, `Email triage reaction ${action === 'add' ? 'processed' : 'removed'}`);
-
+      logger.info(
+        {
+          emailId,
+          action: reactionEmoji,
+          userId,
+          userName,
+          messageId: message.id,
+        },
+        `Email triage reaction ${action === 'add' ? 'processed' : 'removed'}`,
+      );
     } catch (error) {
       logger.error({ error }, 'Failed to handle email triage reaction');
     }
@@ -388,13 +435,16 @@ export class DiscordChannel implements Channel {
   private async handleProactiveEmailReaction(
     reactionEmoji: string,
     message: Message,
-    user: User | PartialUser
+    user: User | PartialUser,
   ): Promise<void> {
     try {
       // Extract EMAIL letter from message
       const emailMatch = message.content?.match(/EMAIL ([A-Z])/);
       if (!emailMatch) {
-        logger.warn({ messageId: message.id }, 'Could not extract email letter from proactive message');
+        logger.warn(
+          { messageId: message.id },
+          'Could not extract email letter from proactive message',
+        );
         return;
       }
 
@@ -402,32 +452,47 @@ export class DiscordChannel implements Channel {
       const userName = user.username || user.displayName || 'Unknown';
 
       // Call our proactive email reaction handler
-      const { handleEmailReaction } = require('/Users/davidprice/nanoclaw/groups/discord_email_campaigns/workspace/email-reaction-handler.cjs');
+      const {
+        handleEmailReaction,
+      } = require('/Users/davidprice/nanoclaw/groups/discord_email_campaigns/workspace/email-reaction-handler.cjs');
 
       await handleEmailReaction(message.content || '', reactionEmoji, user.id);
 
       // Update message to show action taken
       const actionTaken = this.getActionFromReaction(reactionEmoji);
-      const updatedContent = this.addProactiveActionStatus(message.content || '', actionTaken, userName);
+      const updatedContent = this.addProactiveActionStatus(
+        message.content || '',
+        actionTaken,
+        userName,
+      );
 
       if (message.editable) {
         await message.edit(updatedContent);
       } else {
-        await message.reply(`✅ **${actionTaken}** processed for EMAIL ${emailLetter} by ${userName}`);
+        await message.reply(
+          `✅ **${actionTaken}** processed for EMAIL ${emailLetter} by ${userName}`,
+        );
       }
 
-      logger.info({
-        emailLetter,
-        action: reactionEmoji,
-        actionName: actionTaken,
-        userId: user.id,
-        userName,
-        messageId: message.id
-      }, 'Proactive email reaction processed');
-
+      logger.info(
+        {
+          emailLetter,
+          action: reactionEmoji,
+          actionName: actionTaken,
+          userId: user.id,
+          userName,
+          messageId: message.id,
+        },
+        'Proactive email reaction processed',
+      );
     } catch (error) {
-      logger.error({ error, messageId: message.id }, 'Failed to handle proactive email reaction');
-      await message.reply(`❌ Failed to process email action. Please try again or handle manually.`);
+      logger.error(
+        { error, messageId: message.id },
+        'Failed to handle proactive email reaction',
+      );
+      await message.reply(
+        `❌ Failed to process email action. Please try again or handle manually.`,
+      );
     }
   }
 
@@ -441,7 +506,7 @@ export class DiscordChannel implements Channel {
       '📅': 'Add to Calendar',
       '🗑️': 'Delete',
       '📧': 'Draft Reply',
-      '📝': 'Note and Archive'
+      '📝': 'Note and Archive',
     };
     return actionMap[reactionEmoji] || 'Unknown Action';
   }
@@ -449,12 +514,19 @@ export class DiscordChannel implements Channel {
   /**
    * Add action status to proactive email message
    */
-  private addProactiveActionStatus(originalContent: string, actionName: string, userName: string): string {
+  private addProactiveActionStatus(
+    originalContent: string,
+    actionName: string,
+    userName: string,
+  ): string {
     const statusLine = `\n\n✅ **PROCESSED:** ${actionName} by ${userName} at ${new Date().toLocaleTimeString()}`;
 
     // If there's already an action status, replace it
     if (originalContent.includes('✅ **PROCESSED:**')) {
-      return originalContent.replace(/\n\n✅ \*\*PROCESSED:\*\*.*$/s, statusLine);
+      return originalContent.replace(
+        /\n\n✅ \*\*PROCESSED:\*\*.*$/s,
+        statusLine,
+      );
     }
 
     return originalContent + statusLine;
@@ -468,7 +540,7 @@ export class DiscordChannel implements Channel {
     reactionEmoji: string,
     userId: string,
     userName: string,
-    message: Message
+    message: Message,
   ): Promise<void> {
     const actionMap: Record<string, string> = {
       '1️⃣': 'Archive',
@@ -479,7 +551,7 @@ export class DiscordChannel implements Channel {
       '6️⃣': 'Delete/Spam',
       '7️⃣': 'Create Task',
       '8️⃣': 'Ask Andy for Help',
-      '9️⃣': 'Move to Folder'
+      '9️⃣': 'Move to Folder',
     };
 
     const actionName = actionMap[reactionEmoji];
@@ -487,7 +559,11 @@ export class DiscordChannel implements Channel {
 
     try {
       // Send a request to Andy (the assistant) to handle the email action
-      const andyMessage = this.buildAndyRequestMessage(emailId, actionName, userName);
+      const andyMessage = this.buildAndyRequestMessage(
+        emailId,
+        actionName,
+        userName,
+      );
 
       // Send the request in the same channel or a designated Andy channel
       const chatJid = `dc:${message.channelId}`;
@@ -505,23 +581,37 @@ export class DiscordChannel implements Channel {
 
       // Update the original message to show action taken
       if (message.editable) {
-        const updatedContent = this.addActionStatusToMessage(message.content || '', actionName, userName);
+        const updatedContent = this.addActionStatusToMessage(
+          message.content || '',
+          actionName,
+          userName,
+        );
         await message.edit(updatedContent);
       } else {
         // If can't edit, reply with status
-        await message.reply(`✅ **${actionName}** requested by ${userName} for email \`${emailId}\``);
+        await message.reply(
+          `✅ **${actionName}** requested by ${userName} for email \`${emailId}\``,
+        );
       }
-
     } catch (error) {
-      logger.error({ emailId, actionName, error }, 'Failed to process email triage action');
-      await message.reply(`❌ Failed to process **${actionName}** for email \`${emailId}\`. Please try again or handle manually.`);
+      logger.error(
+        { emailId, actionName, error },
+        'Failed to process email triage action',
+      );
+      await message.reply(
+        `❌ Failed to process **${actionName}** for email \`${emailId}\`. Please try again or handle manually.`,
+      );
     }
   }
 
   /**
    * Build a message for Andy to handle the email action
    */
-  private buildAndyRequestMessage(emailId: string, actionName: string, userName: string): string {
+  private buildAndyRequestMessage(
+    emailId: string,
+    actionName: string,
+    userName: string,
+  ): string {
     const baseMessage = `@${ASSISTANT_NAME} Please handle email triage action:
 
 **Action:** ${actionName}
@@ -533,31 +623,58 @@ export class DiscordChannel implements Channel {
 
     switch (actionName) {
       case 'Archive':
-        return baseMessage + 'Please archive this email in Gmail and mark it as processed.';
+        return (
+          baseMessage +
+          'Please archive this email in Gmail and mark it as processed.'
+        );
 
       case 'Reply':
-        return baseMessage + 'Please compose and send an appropriate reply to this email. Use your best judgment for the response content based on the email context.';
+        return (
+          baseMessage +
+          'Please compose and send an appropriate reply to this email. Use your best judgment for the response content based on the email context.'
+        );
 
       case 'Forward':
-        return baseMessage + 'Please forward this email to the appropriate person/team. Determine the best recipient based on the email content and context.';
+        return (
+          baseMessage +
+          'Please forward this email to the appropriate person/team. Determine the best recipient based on the email content and context.'
+        );
 
       case 'Mark Important/Priority':
-        return baseMessage + 'Please mark this email as important/priority in Gmail and ensure it gets expedited handling.';
+        return (
+          baseMessage +
+          'Please mark this email as important/priority in Gmail and ensure it gets expedited handling.'
+        );
 
       case 'Schedule Follow-up':
-        return baseMessage + 'Please schedule a follow-up reminder for this email. Set an appropriate follow-up time based on the email content and urgency.';
+        return (
+          baseMessage +
+          'Please schedule a follow-up reminder for this email. Set an appropriate follow-up time based on the email content and urgency.'
+        );
 
       case 'Delete/Spam':
-        return baseMessage + 'Please delete this email or mark it as spam if appropriate. Use caution and only do this if you\'re confident it\'s spam or truly unnecessary.';
+        return (
+          baseMessage +
+          "Please delete this email or mark it as spam if appropriate. Use caution and only do this if you're confident it's spam or truly unnecessary."
+        );
 
       case 'Create Task':
-        return baseMessage + 'Please create a task or calendar item based on this email content. Extract any actionable items and schedule them appropriately.';
+        return (
+          baseMessage +
+          'Please create a task or calendar item based on this email content. Extract any actionable items and schedule them appropriately.'
+        );
 
       case 'Ask Andy for Help':
-        return baseMessage + 'Please provide guidance on how to handle this email. Analyze the content and suggest the best course of action.';
+        return (
+          baseMessage +
+          'Please provide guidance on how to handle this email. Analyze the content and suggest the best course of action.'
+        );
 
       case 'Move to Folder':
-        return baseMessage + 'Please move this email to the appropriate folder/label in Gmail based on its content and category.';
+        return (
+          baseMessage +
+          'Please move this email to the appropriate folder/label in Gmail based on its content and category.'
+        );
 
       default:
         return baseMessage + 'Please handle this email appropriately.';
@@ -567,12 +684,19 @@ export class DiscordChannel implements Channel {
   /**
    * Add action status to the original email message
    */
-  private addActionStatusToMessage(originalContent: string, actionName: string, userName: string): string {
+  private addActionStatusToMessage(
+    originalContent: string,
+    actionName: string,
+    userName: string,
+  ): string {
     const statusLine = `\n\n✅ **Action Taken:** ${actionName} (requested by ${userName} at ${new Date().toLocaleTimeString()})`;
 
     // If there's already an action status, replace it
     if (originalContent.includes('✅ **Action Taken:**')) {
-      return originalContent.replace(/\n\n✅ \*\*Action Taken:\*\*.*$/s, statusLine);
+      return originalContent.replace(
+        /\n\n✅ \*\*Action Taken:\*\*.*$/s,
+        statusLine,
+      );
     }
 
     return originalContent + statusLine;

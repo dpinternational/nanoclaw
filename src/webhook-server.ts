@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import express from 'express';
+import fs from 'fs';
 import helmet from 'helmet';
 import http from 'http';
 import https from 'https';
+import path from 'path';
 
 import {
   HTTP3_ENABLED,
@@ -58,9 +60,11 @@ export class WebhookServer {
 
   private setupMiddleware(): void {
     // Security middleware
-    this.app.use(helmet({
-      contentSecurityPolicy: false, // Webhook doesn't need CSP
-    }));
+    this.app.use(
+      helmet({
+        contentSecurityPolicy: false, // Webhook doesn't need CSP
+      }),
+    );
 
     // Rate limiting middleware
     this.app.use((req, res, next) => {
@@ -85,13 +89,13 @@ export class WebhookServer {
       res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
       });
     });
 
     // Main webhook endpoint
     this.app.post(WEBHOOK_PATH, (req, res) => {
-      this.handleWebhook(req, res).catch(err => {
+      this.handleWebhook(req, res).catch((err) => {
         logger.error({ err }, 'Webhook handler error');
         if (!res.headersSent) {
           res.status(500).json({ error: 'Internal server error' });
@@ -105,7 +109,10 @@ export class WebhookServer {
     });
   }
 
-  private async handleWebhook(req: express.Request, res: express.Response): Promise<void> {
+  private async handleWebhook(
+    req: express.Request,
+    res: express.Response,
+  ): Promise<void> {
     try {
       // Verify secret token if configured
       if (this.secretToken) {
@@ -137,14 +144,16 @@ export class WebhookServer {
 
       // Process update asynchronously
       setImmediate(() => {
-        handler(update).catch(err => {
-          logger.error({ err, updateId: update.update_id }, 'Handler processing error');
+        handler(update).catch((err) => {
+          logger.error(
+            { err, updateId: update.update_id },
+            'Handler processing error',
+          );
         });
       });
 
       // Respond immediately to Telegram
       res.status(200).json({ ok: true });
-
     } catch (err) {
       logger.error({ err }, 'Webhook processing error');
       res.status(500).json({ error: 'Internal server error' });
@@ -173,15 +182,18 @@ export class WebhookServer {
 
   private startRateLimitCleanup(): void {
     // Clean up expired rate limit entries every 5 minutes
-    setInterval(() => {
-      const now = Date.now();
-      const entries = Array.from(this.rateLimiter.entries());
-      for (const [ip, entry] of entries) {
-        if (now > entry.resetTime) {
-          this.rateLimiter.delete(ip);
+    setInterval(
+      () => {
+        const now = Date.now();
+        const entries = Array.from(this.rateLimiter.entries());
+        for (const [ip, entry] of entries) {
+          if (now > entry.resetTime) {
+            this.rateLimiter.delete(ip);
+          }
         }
-      }
-    }, 5 * 60 * 1000);
+      },
+      5 * 60 * 1000,
+    );
   }
 
   public registerHandler(key: string, handler: WebhookHandler): void {
@@ -209,7 +221,19 @@ export class WebhookServer {
           logger.info('HTTP/3 requested but falling back to HTTP/2');
         }
 
-        this.server = http.createServer(this.app);
+        // Check for SSL certificates — if present, use HTTPS (required for Telegram webhooks)
+        const certDir = path.join(process.cwd(), 'certs');
+        const certPath = path.join(certDir, 'webhook.pem');
+        const keyPath = path.join(certDir, 'webhook.key');
+        if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+          logger.info({ certPath }, 'Starting webhook server with HTTPS');
+          this.server = https.createServer({
+            cert: fs.readFileSync(certPath),
+            key: fs.readFileSync(keyPath),
+          }, this.app);
+        } else {
+          this.server = http.createServer(this.app);
+        }
 
         // Configure server settings for performance
         this.server.maxConnections = WEBHOOK_MAX_CONNECTIONS;
@@ -217,12 +241,15 @@ export class WebhookServer {
         this.server.headersTimeout = 66000; // Higher than keepAliveTimeout
 
         this.server.listen(WEBHOOK_PORT, () => {
-          logger.info({
-            port: WEBHOOK_PORT,
-            path: WEBHOOK_PATH,
-            maxConnections: WEBHOOK_MAX_CONNECTIONS,
-            rateLimit: WEBHOOK_RATE_LIMIT
-          }, 'Webhook server started');
+          logger.info(
+            {
+              port: WEBHOOK_PORT,
+              path: WEBHOOK_PATH,
+              maxConnections: WEBHOOK_MAX_CONNECTIONS,
+              rateLimit: WEBHOOK_RATE_LIMIT,
+            },
+            'Webhook server started',
+          );
           resolve();
         });
 
@@ -235,7 +262,6 @@ export class WebhookServer {
         this.server.on('close', () => {
           logger.info('Webhook server closed');
         });
-
       } catch (err) {
         reject(err);
       }
@@ -266,10 +292,12 @@ export class WebhookServer {
     if (!WEBHOOK_DOMAIN) {
       throw new Error('WEBHOOK_DOMAIN not configured');
     }
-    const protocol = WEBHOOK_PORT === 443 ? 'https' : 'http';
-    const port = (protocol === 'https' && WEBHOOK_PORT === 443) ||
-                 (protocol === 'http' && WEBHOOK_PORT === 80) ? '' : `:${WEBHOOK_PORT}`;
-    return `${protocol}://${WEBHOOK_DOMAIN}${port}${WEBHOOK_PATH}`;
+    // If certs exist, use HTTPS. Telegram webhooks require HTTPS.
+    const certDir = path.join(process.cwd(), 'certs');
+    const hasCerts = fs.existsSync(path.join(certDir, 'webhook.pem'));
+    const protocol = hasCerts ? 'https' : 'http';
+    // WEBHOOK_DOMAIN may or may not include port. Use it as-is.
+    return `${protocol}://${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`;
   }
 }
 

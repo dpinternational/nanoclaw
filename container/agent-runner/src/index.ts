@@ -408,7 +408,8 @@ async function runQuery(
         'TodoWrite', 'ToolSearch', 'Skill',
         'NotebookEdit',
         'mcp__nanoclaw__*',
-        'mcp__gmail__*',
+        // Gmail MCP removed — Andy was sending emails without approval via this channel
+        // All email operations must go through gws CLI (which is gated by the wrapper)
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -424,10 +425,11 @@ async function runQuery(
             NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
           },
         },
-        gmail: {
-          command: 'npx',
-          args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
-        },
+        // Gmail MCP removed — was bypassing the gws email gate
+        // gmail: {
+        //   command: 'npx',
+        //   args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
+        // },
       },
       hooks: {
         PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],

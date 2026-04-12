@@ -182,7 +182,7 @@ export class GmailChannel implements Channel {
   // --- Private ---
 
   private buildQuery(): string {
-    return 'is:unread in:inbox';
+    return 'in:inbox';
   }
 
   private async pollForMessages(): Promise<void> {

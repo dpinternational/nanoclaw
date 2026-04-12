@@ -115,6 +115,57 @@ export function startIpcWatcher(deps: IpcDeps): void {
         );
       }
 
+      // Process email drafts awaiting approval
+      const emailDraftsDir = path.join(ipcBaseDir, sourceGroup, 'email_drafts');
+      try {
+        if (fs.existsSync(emailDraftsDir)) {
+          const draftFiles = fs
+            .readdirSync(emailDraftsDir)
+            .filter((f) => f.endsWith('.json'));
+          for (const file of draftFiles) {
+            const filePath = path.join(emailDraftsDir, file);
+            try {
+              const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+              if (data.type === 'email_draft') {
+                // Find main group JID to notify David
+                const mainEntry = Object.entries(registeredGroups).find(
+                  ([, g]) => g.isMain === true,
+                );
+                if (mainEntry) {
+                  const mainJid = mainEntry[0];
+                  const summary = [
+                    `📧 *EMAIL DRAFT AWAITING APPROVAL*`,
+                    `Draft ID: ${data.draft_id}`,
+                    `Command: ${data.command}`,
+                    `Time: ${data.timestamp}`,
+                    '',
+                    `⚠️ Andy tried to send an email. It has been blocked.`,
+                    `Review and send manually if needed.`,
+                  ].join('\n');
+                  await deps.sendMessage(mainJid, summary);
+                  logger.info(
+                    { draftId: data.draft_id, sourceGroup },
+                    'Email draft blocked and notification sent to David',
+                  );
+                }
+              }
+              fs.unlinkSync(filePath);
+            } catch (err) {
+              logger.error(
+                { file, sourceGroup, err },
+                'Error processing email draft',
+              );
+              try { fs.unlinkSync(filePath); } catch { /* already deleted */ }
+            }
+          }
+        }
+      } catch (err) {
+        logger.error(
+          { err, sourceGroup },
+          'Error reading email drafts directory',
+        );
+      }
+
       // Process tasks from this group's IPC directory
       try {
         if (fs.existsSync(tasksDir)) {
@@ -284,6 +335,10 @@ export async function processTaskIpc(
             { taskId: data.taskId, sourceGroup },
             'Task paused via IPC',
           );
+          deps.sendMessage(
+            'tg:577469008',
+            `⚠️ Task "${data.taskId}" was paused by agent in ${sourceGroup}`,
+          ).catch(() => {});
           deps.onTasksChanged();
         } else {
           logger.warn(

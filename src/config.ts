@@ -6,7 +6,16 @@ import { readEnvFile } from './env.js';
 // Read config values from .env (falls back to process.env).
 // Secrets (API keys, tokens) are NOT read here — they are loaded only
 // by the credential proxy (credential-proxy.ts), never exposed to containers.
-const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER']);
+const envConfig = readEnvFile([
+  'ASSISTANT_NAME',
+  'ASSISTANT_HAS_OWN_NUMBER',
+  'WEBHOOK_ENABLED',
+  'WEBHOOK_PORT',
+  'WEBHOOK_PATH',
+  'WEBHOOK_SECRET_TOKEN',
+  'WEBHOOK_DOMAIN',
+  'HTTP3_ENABLED',
+]);
 
 export const ASSISTANT_NAME =
   process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -17,12 +26,12 @@ export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 
 // Webhook configuration
-export const WEBHOOK_ENABLED = process.env.WEBHOOK_ENABLED === 'true';
-export const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT || '3002', 10);
-export const WEBHOOK_PATH = process.env.WEBHOOK_PATH || '/webhook';
-export const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN || '';
-export const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN || '';
-export const HTTP3_ENABLED = process.env.HTTP3_ENABLED === 'true';
+export const WEBHOOK_ENABLED = (process.env.WEBHOOK_ENABLED || envConfig.WEBHOOK_ENABLED) === 'true';
+export const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT || envConfig.WEBHOOK_PORT || '3002', 10);
+export const WEBHOOK_PATH = process.env.WEBHOOK_PATH || envConfig.WEBHOOK_PATH || '/webhook';
+export const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN || envConfig.WEBHOOK_SECRET_TOKEN || '';
+export const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN || envConfig.WEBHOOK_DOMAIN || '';
+export const HTTP3_ENABLED = (process.env.HTTP3_ENABLED || envConfig.HTTP3_ENABLED) === 'true';
 export const WEBHOOK_MAX_CONNECTIONS = parseInt(
   process.env.WEBHOOK_MAX_CONNECTIONS || '100',
   10,

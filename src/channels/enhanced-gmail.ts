@@ -25,9 +25,10 @@ import {
   EmailCategory,
   Priority,
   UrgencyLevel,
-  EmailAction
+  EmailAction,
 } from '../email-classifier.js';
 import { DiscordEmailRouter, DiscordMessage } from '../discord-email-router.js';
+import { isTPGEmail, captureTPGEmail } from '../recruitment-db.js';
 
 export interface EnhancedGmailChannelOpts {
   onMessage: OnInboundMessage;
@@ -65,7 +66,7 @@ export class EnhancedGmailChannel implements Channel {
     autoArchived: 0,
     escalated: 0,
     discordRouted: 0,
-    lastReset: new Date()
+    lastReset: new Date(),
   };
 
   constructor(opts: EnhancedGmailChannelOpts, pollIntervalMs = 60000) {
@@ -107,7 +108,10 @@ export class EnhancedGmailChannel implements Channel {
         fs.writeFileSync(tokensPath, JSON.stringify(current, null, 2));
         logger.debug('Enhanced Gmail OAuth tokens refreshed');
       } catch (err) {
-        logger.warn({ err }, 'Failed to persist refreshed Enhanced Gmail tokens');
+        logger.warn(
+          { err },
+          'Failed to persist refreshed Enhanced Gmail tokens',
+        );
       }
     });
 
@@ -156,7 +160,10 @@ export class EnhancedGmailChannel implements Channel {
       });
 
       const messages = res.data.messages || [];
-      logger.debug({ messageCount: messages.length }, 'Enhanced Gmail polling results');
+      logger.debug(
+        { messageCount: messages.length },
+        'Enhanced Gmail polling results',
+      );
 
       for (const stub of messages) {
         if (!stub.id || this.processedIds.has(stub.id)) continue;
@@ -175,7 +182,6 @@ export class EnhancedGmailChannel implements Channel {
 
       // Send periodic stats update
       await this.sendStatsUpdateIfNeeded();
-
     } catch (err) {
       this.consecutiveErrors++;
       const backoffMs = Math.min(
@@ -244,11 +250,29 @@ export class EnhancedGmailChannel implements Channel {
         timestamp,
         id: messageId,
         threadId,
-        labels: msg.data.labelIds || []
+        labels: msg.data.labelIds || [],
       };
 
       // Classify the email
       const classification = await this.classifier.classifyEmail(emailMetadata);
+
+      // Capture @tpglife.com emails to recruitment intelligence database
+      // Also capture Google Sheets shares from known recruiters (e.g. "Robert Ramsey (via Google Sheets)")
+      const isTPG = isTPGEmail(senderEmail);
+      const isRecruiterShare =
+        senderEmail === 'drive-shares-dm-noreply@google.com' &&
+        (body.includes('@tpglife.com') || /\b(Robert Ramsey|Sandra Futch)\b/i.test(senderName));
+      if (isTPG || isRecruiterShare) {
+        captureTPGEmail({
+          gmailMessageId: messageId,
+          gmailThreadId: threadId,
+          senderEmail: isRecruiterShare ? senderName.replace(/\s*\(via.*\)/, '').trim().toLowerCase().replace(/\s+/g, '.') + '@tpglife.com' : senderEmail,
+          senderName: senderName.replace(/\s*\(via.*\)/, '').trim(),
+          subject,
+          body,
+          timestamp,
+        });
+      }
 
       // Handle the classified email
       await this.handleClassifiedEmail(emailMetadata, classification);
@@ -262,11 +286,10 @@ export class EnhancedGmailChannel implements Channel {
           subject,
           category: classification.category,
           priority: classification.priority,
-          action: classification.action
+          action: classification.action,
         },
         'Enhanced Gmail email processed and classified',
       );
-
     } catch (error) {
       logger.error({ messageId, error }, 'Failed to process enhanced email');
     }
@@ -275,7 +298,10 @@ export class EnhancedGmailChannel implements Channel {
   /**
    * Handle classified email based on determined action
    */
-  private async handleClassifiedEmail(email: EmailMetadata, classification: ClassificationResult): Promise<void> {
+  private async handleClassifiedEmail(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): Promise<void> {
     // Cache thread metadata
     if (email.threadId) {
       this.threadMeta.set(email.threadId, {
@@ -283,13 +309,15 @@ export class EnhancedGmailChannel implements Channel {
         senderName: email.fromName || email.from,
         subject: email.subject,
         messageId: email.id,
-        classification
+        classification,
       });
     }
 
     // Route to Discord if not auto-archived/spam
-    if (classification.action !== EmailAction.AUTO_ARCHIVE &&
-        classification.action !== EmailAction.SPAM_FILTER) {
+    if (
+      classification.action !== EmailAction.AUTO_ARCHIVE &&
+      classification.action !== EmailAction.SPAM_FILTER
+    ) {
       await this.routeToDiscord(email, classification);
     }
 
@@ -303,15 +331,27 @@ export class EnhancedGmailChannel implements Channel {
 
     // Store chat metadata for discovery
     const chatJid = `gmail:${email.threadId || email.id}`;
-    this.opts.onChatMetadata(chatJid, email.timestamp, email.subject, 'enhanced-gmail', false);
+    this.opts.onChatMetadata(
+      chatJid,
+      email.timestamp,
+      email.subject,
+      'enhanced-gmail',
+      false,
+    );
   }
 
   /**
    * Route email to Discord based on classification
    */
-  private async routeToDiscord(email: EmailMetadata, classification: ClassificationResult): Promise<void> {
+  private async routeToDiscord(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): Promise<void> {
     try {
-      const discordMessage = await this.discordRouter.routeEmail(email, classification);
+      const discordMessage = await this.discordRouter.routeEmail(
+        email,
+        classification,
+      );
 
       // Send to Discord via callback if provided
       if (this.opts.onDiscordMessage) {
@@ -320,21 +360,29 @@ export class EnhancedGmailChannel implements Channel {
 
       this.processingStats.discordRouted++;
 
-      logger.info({
-        emailId: email.id,
-        discordChannel: discordMessage.channelId,
-        category: classification.category
-      }, 'Email routed to Discord');
-
+      logger.info(
+        {
+          emailId: email.id,
+          discordChannel: discordMessage.channelId,
+          category: classification.category,
+        },
+        'Email routed to Discord',
+      );
     } catch (error) {
-      logger.error({ emailId: email.id, error }, 'Failed to route email to Discord');
+      logger.error(
+        { emailId: email.id, error },
+        'Failed to route email to Discord',
+      );
     }
   }
 
   /**
    * Execute automatic actions based on classification
    */
-  private async executeAutoActions(email: EmailMetadata, classification: ClassificationResult): Promise<void> {
+  private async executeAutoActions(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): Promise<void> {
     if (!this.gmail) return;
 
     try {
@@ -344,7 +392,7 @@ export class EnhancedGmailChannel implements Channel {
             userId: 'me',
             id: email.id,
             requestBody: {
-              removeLabelIds: ['UNREAD', 'INBOX']
+              removeLabelIds: ['UNREAD', 'INBOX'],
             },
           });
           this.processingStats.autoArchived++;
@@ -357,7 +405,7 @@ export class EnhancedGmailChannel implements Channel {
             id: email.id,
             requestBody: {
               addLabelIds: ['SPAM'],
-              removeLabelIds: ['UNREAD', 'INBOX']
+              removeLabelIds: ['UNREAD', 'INBOX'],
             },
           });
           logger.debug({ emailId: email.id }, 'Email marked as spam');
@@ -370,7 +418,7 @@ export class EnhancedGmailChannel implements Channel {
             userId: 'me',
             id: email.id,
             requestBody: {
-              addLabelIds: ['IMPORTANT']
+              addLabelIds: ['IMPORTANT'],
             },
           });
           this.processingStats.escalated++;
@@ -392,35 +440,45 @@ export class EnhancedGmailChannel implements Channel {
           await this.executeCustomAction(email, action);
         }
       }
-
     } catch (error) {
-      logger.error({ emailId: email.id, error }, 'Failed to execute auto-actions');
+      logger.error(
+        { emailId: email.id, error },
+        'Failed to execute auto-actions',
+      );
     }
   }
 
   /**
    * Execute custom actions (placeholder for future extensions)
    */
-  private async executeCustomAction(email: EmailMetadata, action: any): Promise<void> {
-    logger.debug({ emailId: email.id, actionType: action.type }, 'Custom action execution not implemented');
+  private async executeCustomAction(
+    email: EmailMetadata,
+    action: any,
+  ): Promise<void> {
+    logger.debug(
+      { emailId: email.id, actionType: action.type },
+      'Custom action execution not implemented',
+    );
     // Future: Implement custom actions like auto-reply, forward, etc.
   }
 
   /**
    * Determine if email should still be sent to main group for traditional processing
    */
-  private shouldSendToMainGroup(classification: ClassificationResult): boolean {
-    // Send critical and high priority emails to main group for Andy to handle
-    return classification.priority === Priority.CRITICAL ||
-           classification.priority === Priority.HIGH ||
-           classification.action === EmailAction.IMMEDIATE_ALERT ||
-           classification.action === EmailAction.ESCALATE;
+  private shouldSendToMainGroup(_classification: ClassificationResult): boolean {
+    // DISABLED: Do NOT auto-feed emails to Andy. He was sending replies
+    // without David's approval. Emails go to Discord triage only.
+    // David reviews and tells Andy what to do via Telegram.
+    return false;
   }
 
   /**
    * Send email to main group for traditional NanoClaw processing
    */
-  private async sendToMainGroup(email: EmailMetadata, classification: ClassificationResult): Promise<void> {
+  private async sendToMainGroup(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): Promise<void> {
     const groups = this.opts.registeredGroups();
     const mainEntry = Object.entries(groups).find(([, g]) => g.isMain === true);
 
@@ -454,11 +512,20 @@ export class EnhancedGmailChannel implements Channel {
   /**
    * Format email content for main group delivery
    */
-  private formatEmailForMainGroup(email: EmailMetadata, classification: ClassificationResult): string {
-    const priority = classification.priority === Priority.CRITICAL ? '🚨 CRITICAL' :
-                    classification.priority === Priority.HIGH ? '⚡ HIGH PRIORITY' : '';
+  private formatEmailForMainGroup(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): string {
+    const priority =
+      classification.priority === Priority.CRITICAL
+        ? '🚨 CRITICAL'
+        : classification.priority === Priority.HIGH
+          ? '⚡ HIGH PRIORITY'
+          : '';
 
-    const categoryLabel = classification.category.replace('_', ' ').toUpperCase();
+    const categoryLabel = classification.category
+      .replace('_', ' ')
+      .toUpperCase();
 
     return [
       `${priority ? `${priority} - ` : ''}[${categoryLabel} EMAIL]`,
@@ -467,7 +534,7 @@ export class EnhancedGmailChannel implements Channel {
       `Classification: ${classification.reason}`,
       `Confidence: ${Math.round(classification.confidence * 100)}%`,
       '',
-      email.content || '(No content preview available)'
+      email.content || '(No content preview available)',
     ].join('\n');
   }
 
@@ -476,12 +543,17 @@ export class EnhancedGmailChannel implements Channel {
    */
   private async sendStatsUpdateIfNeeded(): Promise<void> {
     const now = new Date();
-    const hoursSinceReset = (now.getTime() - this.processingStats.lastReset.getTime()) / (1000 * 60 * 60);
+    const hoursSinceReset =
+      (now.getTime() - this.processingStats.lastReset.getTime()) /
+      (1000 * 60 * 60);
 
     // Send summary every 4 hours if there's been activity
     if (hoursSinceReset >= 4 && this.processingStats.totalProcessed > 0) {
       try {
-        const summaryMessage = this.discordRouter.createActivitySummary([], '4 hours');
+        const summaryMessage = this.discordRouter.createActivitySummary(
+          [],
+          '4 hours',
+        );
         summaryMessage.content = this.generateStatsContent();
 
         if (this.opts.onDiscordMessage) {
@@ -494,7 +566,7 @@ export class EnhancedGmailChannel implements Channel {
           autoArchived: 0,
           escalated: 0,
           discordRouted: 0,
-          lastReset: now
+          lastReset: now,
         };
 
         logger.info('Email processing stats summary sent to Discord');
@@ -516,7 +588,7 @@ export class EnhancedGmailChannel implements Channel {
       `🚨 Escalated: ${this.processingStats.escalated}`,
       `💬 Routed to Discord: ${this.processingStats.discordRouted}`,
       '',
-      'All emails classified and routed automatically. Check individual channels for details.'
+      'All emails classified and routed automatically. Check individual channels for details.',
     ].join('\n');
   }
 
@@ -532,7 +604,10 @@ export class EnhancedGmailChannel implements Channel {
     const meta = this.threadMeta.get(threadId);
 
     if (!meta) {
-      logger.warn({ jid }, 'No thread metadata for enhanced reply, cannot send');
+      logger.warn(
+        { jid },
+        'No thread metadata for enhanced reply, cannot send',
+      );
       return;
     }
 
@@ -577,7 +652,10 @@ export class EnhancedGmailChannel implements Channel {
   /**
    * Enhance reply text based on original classification
    */
-  private enhanceReplyText(text: string, classification?: ClassificationResult): string {
+  private enhanceReplyText(
+    text: string,
+    classification?: ClassificationResult,
+  ): string {
     if (!classification) return text;
 
     // Add context based on classification
@@ -607,7 +685,7 @@ export class EnhancedGmailChannel implements Channel {
   }
 
   private buildQuery(): string {
-    return 'is:unread in:inbox';
+    return 'in:inbox';
   }
 
   private extractTextBody(

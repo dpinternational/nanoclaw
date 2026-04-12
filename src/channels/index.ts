@@ -9,6 +9,9 @@ import './enhanced-gmail.js';
 
 // slack
 
+// google calendar
+import './google-calendar.js';
+
 // telegram
 import './telegram.js';
 

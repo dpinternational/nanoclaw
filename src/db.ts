@@ -480,6 +480,23 @@ export function updateTaskAfterRun(
   ).run(nextRun, now, lastResult, nextRun, id);
 }
 
+/**
+ * Check if a task ran recently (within the given window in ms).
+ * Used to prevent duplicate task execution when multiple instances exist.
+ */
+export function getRecentTaskRun(
+  taskId: string,
+  windowMs: number,
+): boolean {
+  const cutoff = new Date(Date.now() - windowMs).toISOString();
+  const row = db
+    .prepare(
+      'SELECT 1 FROM task_run_logs WHERE task_id = ? AND run_at > ? LIMIT 1',
+    )
+    .get(taskId, cutoff);
+  return !!row;
+}
+
 export function logTaskRun(log: TaskRunLog): void {
   db.prepare(
     `

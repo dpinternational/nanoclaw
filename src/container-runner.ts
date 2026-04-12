@@ -94,6 +94,26 @@ function buildVolumeMounts(
       containerPath: '/workspace/group',
       readonly: false,
     });
+
+    // Group sales databases (writable so SQLite WAL mode can create -shm/-wal files)
+    const groupsDataDir = path.join(DATA_DIR, 'groups');
+    if (fs.existsSync(groupsDataDir)) {
+      mounts.push({
+        hostPath: groupsDataDir,
+        containerPath: '/workspace/project/data/groups',
+        readonly: false,
+      });
+    }
+
+    // Recruitment intelligence database (writable for main group)
+    const recruitmentDir = path.join(DATA_DIR, 'recruitment');
+    if (fs.existsSync(recruitmentDir)) {
+      mounts.push({
+        hostPath: recruitmentDir,
+        containerPath: '/workspace/recruitment-data',
+        readonly: false,
+      });
+    }
   } else {
     // Other groups only get their own folder
     mounts.push({
@@ -101,6 +121,17 @@ function buildVolumeMounts(
       containerPath: '/workspace/group',
       readonly: false,
     });
+
+    // Mount the group's own sales/messages database (writable so SQLite WAL mode
+    // can create -shm/-wal files even for read queries).
+    const groupDataDir = path.join(DATA_DIR, 'groups', group.folder);
+    if (fs.existsSync(groupDataDir)) {
+      mounts.push({
+        hostPath: groupDataDir,
+        containerPath: `/workspace/project/data/groups/${group.folder}`,
+        readonly: false,
+      });
+    }
 
     // Global memory directory (read-only for non-main)
     // Only directory mounts are supported, not file mounts
@@ -183,7 +214,7 @@ function buildVolumeMounts(
     mounts.push({
       hostPath: gwsDir,
       containerPath: '/home/node/.config/gws',
-      readonly: true,
+      readonly: false, // gws needs write access for token refresh and cache
     });
   }
 

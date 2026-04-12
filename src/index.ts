@@ -58,6 +58,7 @@ import {
   loadSenderAllowlist,
   shouldDropMessage,
 } from './sender-allowlist.js';
+import { checkAndCelebrateSale } from './sales-celebration.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
@@ -213,6 +214,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   await channel.setTyping?.(chatJid, true);
   let hadError = false;
   let outputSentToUser = false;
+  let tpgMessagesSent = 0;
 
   const output = await runAgent(group, prompt, chatJid, async (result) => {
     // Streaming output callback — called for each agent result
@@ -221,10 +223,23 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks — agent uses these for internal reasoning
-      const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
+      // Strip <internal>...</internal> blocks and stray tags — agent uses these for internal reasoning
+      let text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').replace(/<\/?internal>/g, '').trim();
+      // Strip em dashes, en dashes, and double hyphens from content groups
+      if (group.folder === 'telegram_braindump' || group.folder === 'telegram_va_desk' || group.folder === 'telegram_content_ideas') {
+        text = text.replace(/\s*[—–]\s*/g, '. ').replace(/\s*--\s*/g, '. ').replace(/\.\./g, '.').trim();
+      }
+      // TPG UnCaged: HARD LIMIT — only the FIRST message per container session gets through.
+      // Everything else (self-reviews, duplicate drafts, stray output) is killed.
+      if (group.folder === 'telegram_tpg_uncaged') {
+        if (tpgMessagesSent >= 1) {
+          logger.info({ group: group.name, blocked: text.substring(0, 80) }, 'Blocked extra TPG output');
+          text = '';
+        }
+      }
       logger.info({ group: group.name }, `Agent output: ${raw.length} chars`);
       if (text) {
+        if (group.folder === 'telegram_tpg_uncaged') tpgMessagesSent++;
         await channel.sendMessage(chatJid, text);
         outputSentToUser = true;
       }
@@ -573,6 +588,7 @@ async function main(): Promise<void> {
         }
       }
       storeMessage(msg);
+      checkAndCelebrateSale(msg, chatJid, channels);
     },
     onChatMetadata: (
       chatJid: string,

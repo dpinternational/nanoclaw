@@ -16,7 +16,7 @@ import {
   ClassificationResult,
   EmailCategory,
   Priority,
-  UrgencyLevel
+  UrgencyLevel,
 } from './email-classifier.js';
 import { DiscordEmailRouter } from './discord-email-router.js';
 import { EmailPatternEngine, PatternMatch } from './email-pattern-engine.js';
@@ -105,7 +105,7 @@ export class InboxZeroAutomation {
       dailySummaryEnabled: true,
       weeklyReportEnabled: true,
       performanceMetrics: true,
-      ...config
+      ...config,
     };
 
     // Initialize processing statistics
@@ -118,7 +118,7 @@ export class InboxZeroAutomation {
       escalations: 0,
       averageConfidence: 0,
       processingTime: 0,
-      lastProcessed: new Date().toISOString()
+      lastProcessed: new Date().toISOString(),
     };
 
     // Initialize components
@@ -127,13 +127,18 @@ export class InboxZeroAutomation {
     this.discordRouter = new DiscordEmailRouter();
     this.escalationSystem = new EmailEscalationSystem();
 
-    logger.info({ config: this.config, componentsLoaded: 4 }, 'Inbox Zero Automation System initialized');
+    logger.info(
+      { config: this.config, componentsLoaded: 4 },
+      'Inbox Zero Automation System initialized',
+    );
   }
 
   /**
    * Main processing method - analyze and process a single email
    */
-  public async processEmail(email: EmailMetadata): Promise<EmailProcessingResult> {
+  public async processEmail(
+    email: EmailMetadata,
+  ): Promise<EmailProcessingResult> {
     const startTime = Date.now();
     const result: EmailProcessingResult = {
       emailId: email.id,
@@ -142,7 +147,7 @@ export class InboxZeroAutomation {
       discordRouted: false,
       escalated: false,
       autoActions: [],
-      processingTimeMs: 0
+      processingTimeMs: 0,
     };
 
     try {
@@ -151,10 +156,13 @@ export class InboxZeroAutomation {
       // Step 1: Pattern Recognition (if enabled)
       if (this.config.patternRecognitionEnabled) {
         result.patternMatches = await this.patternEngine.analyzePatterns(email);
-        logger.debug({
-          emailId: email.id,
-          patternMatchCount: result.patternMatches.length
-        }, 'Pattern analysis completed');
+        logger.debug(
+          {
+            emailId: email.id,
+            patternMatchCount: result.patternMatches.length,
+          },
+          'Pattern analysis completed',
+        );
       }
 
       // Step 2: Email Classification
@@ -165,21 +173,26 @@ export class InboxZeroAutomation {
         if (result.patternMatches.length > 0) {
           result.classification = this.enhanceClassificationWithPatterns(
             result.classification,
-            result.patternMatches
+            result.patternMatches,
           );
         }
 
-        logger.debug({
-          emailId: email.id,
-          category: result.classification.category,
-          priority: result.classification.priority,
-          confidence: result.classification.confidence
-        }, 'Email classification completed');
+        logger.debug(
+          {
+            emailId: email.id,
+            category: result.classification.category,
+            priority: result.classification.priority,
+            confidence: result.classification.confidence,
+          },
+          'Email classification completed',
+        );
       }
 
       // Step 3: Discord Routing (if enabled and confident enough)
-      if (this.config.discordRoutingEnabled &&
-          result.classification.confidence >= this.config.confidenceThreshold) {
+      if (
+        this.config.discordRoutingEnabled &&
+        result.classification.confidence >= this.config.confidenceThreshold
+      ) {
         try {
           await this.discordRouter.routeEmail(email, result.classification);
           result.discordRouted = true;
@@ -191,43 +204,57 @@ export class InboxZeroAutomation {
 
       // Step 4: Escalation Check (if enabled)
       if (this.config.escalationEnabled) {
-        const escalationEvents = await this.escalationSystem.checkEscalation(email, result.classification);
+        const escalationEvents = await this.escalationSystem.checkEscalation(
+          email,
+          result.classification,
+        );
         if (escalationEvents.length > 0) {
           result.escalated = true;
           this.stats.escalations++;
-          logger.debug({
-            emailId: email.id,
-            escalationCount: escalationEvents.length
-          }, 'Email escalation triggered');
+          logger.debug(
+            {
+              emailId: email.id,
+              escalationCount: escalationEvents.length,
+            },
+            'Email escalation triggered',
+          );
         }
       }
 
       // Step 5: Auto-actions
-      result.autoActions = await this.executeAutoActions(email, result.classification);
+      result.autoActions = await this.executeAutoActions(
+        email,
+        result.classification,
+      );
 
       // Update statistics
       this.updateStats(email, result);
 
       result.processingTimeMs = Date.now() - startTime;
 
-      logger.info({
-        emailId: email.id,
-        category: result.classification.category,
-        priority: result.classification.priority,
-        discordRouted: result.discordRouted,
-        escalated: result.escalated,
-        autoActionCount: result.autoActions.length,
-        processingTimeMs: result.processingTimeMs
-      }, 'Email processing completed');
+      logger.info(
+        {
+          emailId: email.id,
+          category: result.classification.category,
+          priority: result.classification.priority,
+          discordRouted: result.discordRouted,
+          escalated: result.escalated,
+          autoActionCount: result.autoActions.length,
+          processingTimeMs: result.processingTimeMs,
+        },
+        'Email processing completed',
+      );
 
       return result;
-
     } catch (error) {
-      logger.error({
-        emailId: email.id,
-        error: error,
-        processingTimeMs: Date.now() - startTime
-      }, 'Email processing failed');
+      logger.error(
+        {
+          emailId: email.id,
+          error: error,
+          processingTimeMs: Date.now() - startTime,
+        },
+        'Email processing failed',
+      );
 
       // Return partial result with error info
       result.processingTimeMs = Date.now() - startTime;
@@ -240,7 +267,7 @@ export class InboxZeroAutomation {
    */
   private enhanceClassificationWithPatterns(
     classification: ClassificationResult,
-    patternMatches: PatternMatch[]
+    patternMatches: PatternMatch[],
   ): ClassificationResult {
     if (patternMatches.length === 0) return classification;
 
@@ -249,18 +276,27 @@ export class InboxZeroAutomation {
 
     // If pattern confidence is higher than classification confidence, adjust
     if (topMatch.confidence > classification.confidence) {
-      const patternBoost = Math.min(0.2, topMatch.confidence - classification.confidence);
-      classification.confidence = Math.min(1.0, classification.confidence + patternBoost);
+      const patternBoost = Math.min(
+        0.2,
+        topMatch.confidence - classification.confidence,
+      );
+      classification.confidence = Math.min(
+        1.0,
+        classification.confidence + patternBoost,
+      );
 
       // Add pattern context to reason
       classification.reason += ` (Pattern: ${topMatch.patternId})`;
 
-      logger.debug({
-        originalConfidence: classification.confidence - patternBoost,
-        patternBoost,
-        finalConfidence: classification.confidence,
-        patternId: topMatch.patternId
-      }, 'Classification enhanced with pattern recognition');
+      logger.debug(
+        {
+          originalConfidence: classification.confidence - patternBoost,
+          patternBoost,
+          finalConfidence: classification.confidence,
+          patternId: topMatch.patternId,
+        },
+        'Classification enhanced with pattern recognition',
+      );
     }
 
     return classification;
@@ -269,20 +305,27 @@ export class InboxZeroAutomation {
   /**
    * Execute automatic actions based on classification
    */
-  private async executeAutoActions(email: EmailMetadata, classification: ClassificationResult): Promise<string[]> {
+  private async executeAutoActions(
+    email: EmailMetadata,
+    classification: ClassificationResult,
+  ): Promise<string[]> {
     const actions: string[] = [];
 
     try {
       // Auto-archive low priority/spam emails
-      if (this.config.autoArchiveEnabled &&
-          (classification.priority === Priority.ARCHIVE ||
-           classification.category === EmailCategory.SPAM_NOISE)) {
+      if (
+        this.config.autoArchiveEnabled &&
+        (classification.priority === Priority.ARCHIVE ||
+          classification.category === EmailCategory.SPAM_NOISE)
+      ) {
         actions.push('auto_archive');
       }
 
       // Auto-mark as read for processed emails
-      if (this.config.autoMarkReadEnabled &&
-          classification.priority !== Priority.CRITICAL) {
+      if (
+        this.config.autoMarkReadEnabled &&
+        classification.priority !== Priority.CRITICAL
+      ) {
         actions.push('mark_read');
       }
 
@@ -295,13 +338,15 @@ export class InboxZeroAutomation {
       }
 
       // Record actions in stats
-      actions.forEach(action => {
+      actions.forEach((action) => {
         const current = this.stats.autoActions.get(action) || 0;
         this.stats.autoActions.set(action, current + 1);
       });
-
     } catch (error) {
-      logger.error({ emailId: email.id, error }, 'Auto-action execution failed');
+      logger.error(
+        { emailId: email.id, error },
+        'Auto-action execution failed',
+      );
     }
 
     return actions;
@@ -320,7 +365,7 @@ export class InboxZeroAutomation {
       [EmailCategory.VENDOR_OPERATIONAL]: 'vendors',
       [EmailCategory.MARKETING_ANALYTICS]: 'analytics',
       [EmailCategory.PERSONAL_ADMIN]: 'personal',
-      [EmailCategory.SPAM_NOISE]: 'spam'
+      [EmailCategory.SPAM_NOISE]: 'spam',
     };
 
     return labelMap[category] || null;
@@ -329,7 +374,10 @@ export class InboxZeroAutomation {
   /**
    * Update processing statistics
    */
-  private updateStats(email: EmailMetadata, result: EmailProcessingResult): void {
+  private updateStats(
+    email: EmailMetadata,
+    result: EmailProcessingResult,
+  ): void {
     this.stats.totalEmails++;
     this.stats.lastProcessed = new Date().toISOString();
 
@@ -357,21 +405,28 @@ export class InboxZeroAutomation {
     // Update average confidence
     if (result.classification.confidence) {
       this.stats.averageConfidence =
-        (this.stats.averageConfidence * (this.stats.totalEmails - 1) + result.classification.confidence) /
+        (this.stats.averageConfidence * (this.stats.totalEmails - 1) +
+          result.classification.confidence) /
         this.stats.totalEmails;
     }
 
     // Update processing time
     this.stats.processingTime =
-      (this.stats.processingTime * (this.stats.totalEmails - 1) + result.processingTimeMs) /
+      (this.stats.processingTime * (this.stats.totalEmails - 1) +
+        result.processingTimeMs) /
       this.stats.totalEmails;
   }
 
   /**
    * Process multiple emails in batch
    */
-  public async processBatch(emails: EmailMetadata[]): Promise<EmailProcessingResult[]> {
-    logger.info({ emailCount: emails.length }, 'Starting batch email processing');
+  public async processBatch(
+    emails: EmailMetadata[],
+  ): Promise<EmailProcessingResult[]> {
+    logger.info(
+      { emailCount: emails.length },
+      'Starting batch email processing',
+    );
 
     const results: EmailProcessingResult[] = [];
     const batchStartTime = Date.now();
@@ -382,20 +437,22 @@ export class InboxZeroAutomation {
         results.push(result);
 
         // Small delay between emails to prevent overloading
-        await new Promise(resolve => setTimeout(resolve, 100));
-
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (error) {
         logger.error({ emailId: email.id, error }, 'Batch processing error');
       }
     }
 
     const batchTime = Date.now() - batchStartTime;
-    logger.info({
-      emailCount: emails.length,
-      processedCount: results.length,
-      batchTimeMs: batchTime,
-      avgTimePerEmail: batchTime / results.length
-    }, 'Batch processing completed');
+    logger.info(
+      {
+        emailCount: emails.length,
+        processedCount: results.length,
+        batchTimeMs: batchTime,
+        avgTimePerEmail: batchTime / results.length,
+      },
+      'Batch processing completed',
+    );
 
     return results;
   }
@@ -411,7 +468,7 @@ export class InboxZeroAutomation {
       `⚡ **Avg Confidence:** ${Math.round(this.stats.averageConfidence * 100)}%`,
       `⏱️ **Avg Processing Time:** ${Math.round(this.stats.processingTime)}ms`,
       '',
-      '**📂 Categories:**'
+      '**📂 Categories:**',
     ];
 
     // Add category breakdown
@@ -431,7 +488,10 @@ export class InboxZeroAutomation {
       summary.push('', `🚨 **Escalations:** ${this.stats.escalations}`);
     }
 
-    summary.push('', `*Last updated: ${new Date(this.stats.lastProcessed).toLocaleString()}*`);
+    summary.push(
+      '',
+      `*Last updated: ${new Date(this.stats.lastProcessed).toLocaleString()}*`,
+    );
 
     return summary.join('\n');
   }
@@ -464,7 +524,7 @@ export class InboxZeroAutomation {
       escalations: this.stats.escalations,
       averageConfidence: this.stats.averageConfidence,
       processingTime: this.stats.processingTime,
-      lastProcessed: this.stats.lastProcessed
+      lastProcessed: this.stats.lastProcessed,
     };
   }
 
@@ -481,7 +541,7 @@ export class InboxZeroAutomation {
       escalations: 0,
       averageConfidence: 0,
       processingTime: 0,
-      lastProcessed: new Date().toISOString()
+      lastProcessed: new Date().toISOString(),
     };
     logger.info('Statistics reset');
   }
@@ -489,11 +549,14 @@ export class InboxZeroAutomation {
   /**
    * Add learning feedback
    */
-  public addLearningFeedback(emailId: string, feedback: {
-    userFeedback: 'correct' | 'incorrect' | 'spam' | 'important';
-    originalClassification: EmailCategory;
-    correctClassification?: EmailCategory;
-  }): void {
+  public addLearningFeedback(
+    emailId: string,
+    feedback: {
+      userFeedback: 'correct' | 'incorrect' | 'spam' | 'important';
+      originalClassification: EmailCategory;
+      correctClassification?: EmailCategory;
+    },
+  ): void {
     if (!this.config.learningEnabled) return;
 
     this.patternEngine.addLearningData({
@@ -501,7 +564,7 @@ export class InboxZeroAutomation {
       userFeedback: feedback.userFeedback,
       originalClassification: feedback.originalClassification,
       correctClassification: feedback.correctClassification,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Update sender reputation based on feedback
@@ -511,11 +574,14 @@ export class InboxZeroAutomation {
       // Upgrade sender reputation
     }
 
-    logger.info({
-      emailId,
-      feedback: feedback.userFeedback,
-      originalClassification: feedback.originalClassification
-    }, 'Learning feedback added');
+    logger.info(
+      {
+        emailId,
+        feedback: feedback.userFeedback,
+        originalClassification: feedback.originalClassification,
+      },
+      'Learning feedback added',
+    );
   }
 
   /**
@@ -526,7 +592,7 @@ export class InboxZeroAutomation {
       classifier: this.classifier,
       patternEngine: this.patternEngine,
       discordRouter: this.discordRouter,
-      escalationSystem: this.escalationSystem
+      escalationSystem: this.escalationSystem,
     };
   }
 
@@ -540,6 +606,8 @@ export class InboxZeroAutomation {
 }
 
 // Factory function for easy initialization
-export function createInboxZeroAutomation(config?: Partial<InboxZeroConfig>): InboxZeroAutomation {
+export function createInboxZeroAutomation(
+  config?: Partial<InboxZeroConfig>,
+): InboxZeroAutomation {
   return new InboxZeroAutomation(config);
 }

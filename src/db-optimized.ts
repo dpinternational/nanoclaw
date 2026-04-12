@@ -68,7 +68,7 @@ class DatabaseManager {
       // Create new connection
       const db = new Database(dbPath, {
         readonly: readOnly,
-        fileMustExist: false
+        fileMustExist: false,
       });
 
       // Enable WAL mode for better concurrency (write-ahead logging)
@@ -85,7 +85,7 @@ class DatabaseManager {
         db,
         lastUsed: Date.now(),
         inUse: false,
-        refCount: 0
+        refCount: 0,
       };
 
       this.connections.set(connectionKey, connection);
@@ -98,11 +98,14 @@ class DatabaseManager {
           slowQueryCount: 0,
           fragmentationLevel: 0,
           cacheHitRate: 0,
-          lastOptimized: new Date().toISOString()
+          lastOptimized: new Date().toISOString(),
         });
       }
 
-      logger.info({ dbPath, readOnly }, 'Created new database connection with WAL mode');
+      logger.info(
+        { dbPath, readOnly },
+        'Created new database connection with WAL mode',
+      );
     }
 
     // Update usage tracking
@@ -118,7 +121,7 @@ class DatabaseManager {
   private executeWithMetrics<T>(
     dbPath: string,
     queryFn: (db: Database.Database) => T,
-    queryType = 'unknown'
+    queryType = 'unknown',
   ): T {
     const startTime = Date.now();
     const db = this.getConnection(dbPath);
@@ -132,14 +135,18 @@ class DatabaseManager {
       metrics.queryCount++;
       metrics.totalQueryTime += queryTime;
 
-      if (queryTime > 100) { // Slow query threshold
+      if (queryTime > 100) {
+        // Slow query threshold
         metrics.slowQueryCount++;
-        logger.warn({
-          dbPath,
-          queryType,
-          queryTime,
-          avgQueryTime: metrics.totalQueryTime / metrics.queryCount
-        }, 'Slow database query detected');
+        logger.warn(
+          {
+            dbPath,
+            queryType,
+            queryTime,
+            avgQueryTime: metrics.totalQueryTime / metrics.queryCount,
+          },
+          'Slow database query detected',
+        );
       }
 
       return result;
@@ -292,37 +299,37 @@ class DatabaseManager {
       // Add new columns to messages table
       {
         name: 'add_processing_priority',
-        sql: `ALTER TABLE messages ADD COLUMN processing_priority INTEGER DEFAULT 5`
+        sql: `ALTER TABLE messages ADD COLUMN processing_priority INTEGER DEFAULT 5`,
       },
       {
         name: 'add_content_hash',
-        sql: `ALTER TABLE messages ADD COLUMN content_hash TEXT`
+        sql: `ALTER TABLE messages ADD COLUMN content_hash TEXT`,
       },
       {
         name: 'add_content_truncated',
-        sql: `ALTER TABLE messages ADD COLUMN content_truncated INTEGER DEFAULT 0`
+        sql: `ALTER TABLE messages ADD COLUMN content_truncated INTEGER DEFAULT 0`,
       },
       {
         name: 'add_metadata',
-        sql: `ALTER TABLE messages ADD COLUMN metadata TEXT`
+        sql: `ALTER TABLE messages ADD COLUMN metadata TEXT`,
       },
       {
         name: 'add_created_at_messages',
-        sql: `ALTER TABLE messages ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`
+        sql: `ALTER TABLE messages ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`,
       },
       // Add timestamps to other tables
       {
         name: 'add_timestamps_chats',
         sql: `ALTER TABLE chats ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;
-              ALTER TABLE chats ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP`
+              ALTER TABLE chats ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP`,
       },
       {
         name: 'add_updated_at_tasks',
-        sql: `ALTER TABLE scheduled_tasks ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP`
+        sql: `ALTER TABLE scheduled_tasks ADD COLUMN updated_at TEXT DEFAULT CURRENT_TIMESTAMP`,
       },
       {
         name: 'add_created_at_logs',
-        sql: `ALTER TABLE task_run_logs ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`
+        sql: `ALTER TABLE task_run_logs ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP`,
       },
       // Backfill content hashes for existing messages
       {
@@ -333,17 +340,23 @@ class DatabaseManager {
                 THEN lower(hex(randomblob(16)))
                 ELSE NULL
               END
-              WHERE content_hash IS NULL`
-      }
+              WHERE content_hash IS NULL`,
+      },
     ];
 
     for (const migration of migrations) {
       try {
         database.exec(migration.sql);
-        logger.info({ migration: migration.name }, 'Migration applied successfully');
+        logger.info(
+          { migration: migration.name },
+          'Migration applied successfully',
+        );
       } catch (error) {
         // Column might already exist - this is expected for existing databases
-        logger.debug({ migration: migration.name, error }, 'Migration skipped (likely already applied)');
+        logger.debug(
+          { migration: migration.name, error },
+          'Migration skipped (likely already applied)',
+        );
       }
     }
   }
@@ -374,39 +387,47 @@ class DatabaseManager {
   public storeMessage(msg: NewMessage): void {
     const dbPath = path.join(STORE_DIR, 'messages.db');
 
-    this.executeWithMetrics(dbPath, (db) => {
-      const enhancedMsg: EnhancedMessage = {
-        ...msg,
-        processing_priority: this.calculatePriority(msg),
-        content_hash: this.generateContentHash(msg.content),
-        content_truncated: msg.content && msg.content.length > 10000 ? 1 : 0,
-        metadata: JSON.stringify({
-          original_length: msg.content?.length || 0,
-          channel: msg.chat_jid.includes('@') ? 'whatsapp' : 'other'
-        })
-      };
+    this.executeWithMetrics(
+      dbPath,
+      (db) => {
+        const enhancedMsg: EnhancedMessage = {
+          ...msg,
+          processing_priority: this.calculatePriority(msg),
+          content_hash: this.generateContentHash(msg.content) ?? undefined,
+          content_truncated: !!(msg.content && msg.content.length > 10000),
+          metadata: JSON.stringify({
+            original_length: msg.content?.length || 0,
+            channel: msg.chat_jid.includes('@') ? 'whatsapp' : 'other',
+          }),
+        };
 
-      db.prepare(`
+        db.prepare(
+          `
         INSERT OR REPLACE INTO messages (
           id, chat_jid, sender, sender_name, content, timestamp,
           is_from_me, is_bot_message, processing_priority, content_hash,
           content_truncated, metadata, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).run(
-        enhancedMsg.id,
-        enhancedMsg.chat_jid,
-        enhancedMsg.sender,
-        enhancedMsg.sender_name,
-        enhancedMsg.content_truncated ? enhancedMsg.content?.substring(0, 10000) : enhancedMsg.content,
-        enhancedMsg.timestamp,
-        enhancedMsg.is_from_me ? 1 : 0,
-        enhancedMsg.is_bot_message ? 1 : 0,
-        enhancedMsg.processing_priority,
-        enhancedMsg.content_hash,
-        enhancedMsg.content_truncated,
-        enhancedMsg.metadata
-      );
-    }, 'storeMessage');
+      `,
+        ).run(
+          enhancedMsg.id,
+          enhancedMsg.chat_jid,
+          enhancedMsg.sender,
+          enhancedMsg.sender_name,
+          enhancedMsg.content_truncated
+            ? enhancedMsg.content?.substring(0, 10000)
+            : enhancedMsg.content,
+          enhancedMsg.timestamp,
+          enhancedMsg.is_from_me ? 1 : 0,
+          enhancedMsg.is_bot_message ? 1 : 0,
+          enhancedMsg.processing_priority,
+          enhancedMsg.content_hash,
+          enhancedMsg.content_truncated,
+          enhancedMsg.metadata,
+        );
+      },
+      'storeMessage',
+    );
   }
 
   /**
@@ -417,15 +438,17 @@ class DatabaseManager {
     lastTimestamp: string,
     botPrefix: string,
     limit: number = 200,
-    priorityFilter?: number
+    priorityFilter?: number,
   ): { messages: NewMessage[]; newTimestamp: string } {
     if (jids.length === 0) return { messages: [], newTimestamp: lastTimestamp };
 
     const dbPath = path.join(STORE_DIR, 'messages.db');
 
-    return this.executeWithMetrics(dbPath, (db) => {
-      const placeholders = jids.map(() => '?').join(',');
-      let sql = `
+    return this.executeWithMetrics(
+      dbPath,
+      (db) => {
+        const placeholders = jids.map(() => '?').join(',');
+        let sql = `
         SELECT * FROM (
           SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me,
                  processing_priority, content_hash, metadata
@@ -435,44 +458,50 @@ class DatabaseManager {
             AND content != '' AND content IS NOT NULL
       `;
 
-      const params = [lastTimestamp, ...jids, `${botPrefix}:%`];
+        const params: (string | number)[] = [lastTimestamp, ...jids, `${botPrefix}:%`];
 
-      if (priorityFilter !== undefined) {
-        sql += ' AND processing_priority >= ?';
-        params.push(priorityFilter);
-      }
+        if (priorityFilter !== undefined) {
+          sql += ' AND processing_priority >= ?';
+          params.push(priorityFilter);
+        }
 
-      sql += `
+        sql += `
           ORDER BY processing_priority DESC, timestamp DESC
           LIMIT ?
         ) ORDER BY timestamp
       `;
-      params.push(limit);
+        params.push(limit);
 
-      const rows = db.prepare(sql).all(...params) as NewMessage[];
+        const rows = db.prepare(sql).all(...params) as NewMessage[];
 
-      let newTimestamp = lastTimestamp;
-      for (const row of rows) {
-        if (row.timestamp > newTimestamp) newTimestamp = row.timestamp;
-      }
+        let newTimestamp = lastTimestamp;
+        for (const row of rows) {
+          if (row.timestamp > newTimestamp) newTimestamp = row.timestamp;
+        }
 
-      return { messages: rows, newTimestamp };
-    }, 'getNewMessages');
+        return { messages: rows, newTimestamp };
+      },
+      'getNewMessages',
+    );
   }
 
   /**
    * Get database performance metrics
    */
-  public getPerformanceMetrics(dbPath?: string): DatabaseMetrics | Map<string, DatabaseMetrics> {
+  public getPerformanceMetrics(
+    dbPath?: string,
+  ): DatabaseMetrics | Map<string, DatabaseMetrics> {
     if (dbPath) {
-      return this.metrics.get(dbPath) || {
-        queryCount: 0,
-        totalQueryTime: 0,
-        slowQueryCount: 0,
-        fragmentationLevel: 0,
-        cacheHitRate: 0,
-        lastOptimized: new Date().toISOString()
-      };
+      return (
+        this.metrics.get(dbPath) || {
+          queryCount: 0,
+          totalQueryTime: 0,
+          slowQueryCount: 0,
+          fragmentationLevel: 0,
+          cacheHitRate: 0,
+          lastOptimized: new Date().toISOString(),
+        }
+      );
     }
     return new Map(this.metrics);
   }
@@ -481,39 +510,51 @@ class DatabaseManager {
    * Optimize database performance
    */
   public optimizeDatabase(dbPath: string): void {
-    this.executeWithMetrics(dbPath, (db) => {
-      // Analyze query planner statistics
-      db.pragma('optimize');
+    this.executeWithMetrics(
+      dbPath,
+      (db) => {
+        // Analyze query planner statistics
+        db.pragma('optimize');
 
-      // Update table statistics
-      db.exec('ANALYZE');
+        // Update table statistics
+        db.exec('ANALYZE');
 
-      // Check fragmentation
-      const fragInfo = db.prepare('PRAGMA freelist_count').get() as any;
-      const pageCount = db.prepare('PRAGMA page_count').get() as any;
+        // Check fragmentation
+        const fragInfo = db.prepare('PRAGMA freelist_count').get() as any;
+        const pageCount = db.prepare('PRAGMA page_count').get() as any;
 
-      const fragmentation = (fragInfo['freelist_count'] / pageCount['page_count']) * 100;
+        const fragmentation =
+          (fragInfo['freelist_count'] / pageCount['page_count']) * 100;
 
-      // Update metrics
-      const metrics = this.metrics.get(dbPath)!;
-      metrics.fragmentationLevel = fragmentation;
-      metrics.lastOptimized = new Date().toISOString();
+        // Update metrics
+        const metrics = this.metrics.get(dbPath)!;
+        metrics.fragmentationLevel = fragmentation;
+        metrics.lastOptimized = new Date().toISOString();
 
-      // Auto-vacuum if fragmentation is high
-      if (fragmentation > 25) {
-        logger.info({ dbPath, fragmentation }, 'Running auto-vacuum due to high fragmentation');
-        db.exec('VACUUM');
-        metrics.fragmentationLevel = 0;
-      }
+        // Auto-vacuum if fragmentation is high
+        if (fragmentation > 25) {
+          logger.info(
+            { dbPath, fragmentation },
+            'Running auto-vacuum due to high fragmentation',
+          );
+          db.exec('VACUUM');
+          metrics.fragmentationLevel = 0;
+        }
 
-      logger.info({
-        dbPath,
-        fragmentation: fragmentation.toFixed(2),
-        queryCount: metrics.queryCount,
-        avgQueryTime: (metrics.totalQueryTime / Math.max(1, metrics.queryCount)).toFixed(2)
-      }, 'Database optimization completed');
-
-    }, 'optimize');
+        logger.info(
+          {
+            dbPath,
+            fragmentation: fragmentation.toFixed(2),
+            queryCount: metrics.queryCount,
+            avgQueryTime: (
+              metrics.totalQueryTime / Math.max(1, metrics.queryCount)
+            ).toFixed(2),
+          },
+          'Database optimization completed',
+        );
+      },
+      'optimize',
+    );
   }
 
   /**
@@ -523,7 +564,10 @@ class DatabaseManager {
     let priority = 5; // Default priority
 
     // Higher priority for direct mentions or questions
-    if (msg.content?.includes('?') || msg.content?.toLowerCase().includes(ASSISTANT_NAME.toLowerCase())) {
+    if (
+      msg.content?.includes('?') ||
+      msg.content?.toLowerCase().includes(ASSISTANT_NAME.toLowerCase())
+    ) {
       priority += 2;
     }
 
@@ -548,7 +592,9 @@ class DatabaseManager {
   /**
    * Generate content hash for deduplication
    */
-  private generateContentHash(content: string | null | undefined): string | null {
+  private generateContentHash(
+    content: string | null | undefined,
+  ): string | null {
     if (!content || content.trim() === '') return null;
 
     // Normalize content for hashing (remove extra whitespace, normalize case for better dedup)
@@ -563,16 +609,23 @@ class DatabaseManager {
     const now = Date.now();
 
     for (const [key, connection] of this.connections.entries()) {
-      if (!connection.inUse &&
-          connection.refCount === 0 &&
-          now - connection.lastUsed > this.connectionTimeout) {
-
+      if (
+        !connection.inUse &&
+        connection.refCount === 0 &&
+        now - connection.lastUsed > this.connectionTimeout
+      ) {
         try {
           connection.db.close();
           this.connections.delete(key);
-          logger.debug({ connectionKey: key }, 'Cleaned up idle database connection');
+          logger.debug(
+            { connectionKey: key },
+            'Cleaned up idle database connection',
+          );
         } catch (error) {
-          logger.warn({ connectionKey: key, error }, 'Error cleaning up database connection');
+          logger.warn(
+            { connectionKey: key, error },
+            'Error cleaning up database connection',
+          );
         }
       }
     }
@@ -591,7 +644,10 @@ class DatabaseManager {
         connection.db.close();
         logger.debug({ connectionKey: key }, 'Closed database connection');
       } catch (error) {
-        logger.warn({ connectionKey: key, error }, 'Error closing database connection');
+        logger.warn(
+          { connectionKey: key, error },
+          'Error closing database connection',
+        );
       }
     }
 
@@ -624,9 +680,15 @@ export function getNewMessages(
   lastTimestamp: string,
   botPrefix: string,
   limit: number = 200,
-  priorityFilter?: number
+  priorityFilter?: number,
 ): { messages: NewMessage[]; newTimestamp: string } {
-  return dbManager.getNewMessages(jids, lastTimestamp, botPrefix, limit, priorityFilter);
+  return dbManager.getNewMessages(
+    jids,
+    lastTimestamp,
+    botPrefix,
+    limit,
+    priorityFilter,
+  );
 }
 
 export function getPerformanceMetrics(): Map<string, DatabaseMetrics> {

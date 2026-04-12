@@ -20,7 +20,15 @@ export interface Pattern {
 export interface PatternRule {
   type: 'sender' | 'subject' | 'content' | 'time' | 'frequency' | 'chain';
   field?: string;
-  operator: 'contains' | 'matches' | 'starts_with' | 'ends_with' | 'regex' | 'exists' | 'count' | 'time_range';
+  operator:
+    | 'contains'
+    | 'matches'
+    | 'starts_with'
+    | 'ends_with'
+    | 'regex'
+    | 'exists'
+    | 'count'
+    | 'time_range';
   value: string | number | RegExp;
   weight: number;
   caseSensitive?: boolean;
@@ -45,8 +53,14 @@ export interface LearningData {
 export class EmailPatternEngine {
   private patterns = new Map<string, Pattern>();
   private learningHistory = new Map<string, LearningData[]>();
-  private senderFrequency = new Map<string, { count: number; lastSeen: Date; categories: EmailCategory[] }>();
-  private timePatterns = new Map<string, { hourCounts: number[]; dayCounts: number[] }>();
+  private senderFrequency = new Map<
+    string,
+    { count: number; lastSeen: Date; categories: EmailCategory[] }
+  >();
+  private timePatterns = new Map<
+    string,
+    { hourCounts: number[]; dayCounts: number[] }
+  >();
 
   constructor() {
     this.initializeDefaultPatterns();
@@ -71,7 +85,7 @@ export class EmailPatternEngine {
           score: match.score,
           confidence: match.confidence,
           matchedRules: match.matchedRules,
-          context: match.context
+          context: match.context,
         });
       }
     }
@@ -79,11 +93,14 @@ export class EmailPatternEngine {
     // Sort by score descending
     matches.sort((a, b) => b.score - a.score);
 
-    logger.debug({
-      emailId: email.id,
-      matchCount: matches.length,
-      topMatch: matches[0]?.patternId
-    }, 'Pattern analysis completed');
+    logger.debug(
+      {
+        emailId: email.id,
+        matchCount: matches.length,
+        topMatch: matches[0]?.patternId,
+      },
+      'Pattern analysis completed',
+    );
 
     return matches;
   }
@@ -91,7 +108,10 @@ export class EmailPatternEngine {
   /**
    * Test a single pattern against an email
    */
-  private async testPattern(email: EmailMetadata, pattern: Pattern): Promise<{
+  private async testPattern(
+    email: EmailMetadata,
+    pattern: Pattern,
+  ): Promise<{
     score: number;
     confidence: number;
     matchedRules: string[];
@@ -101,7 +121,7 @@ export class EmailPatternEngine {
       score: 0,
       confidence: 0,
       matchedRules: [] as string[],
-      context: {} as Record<string, any>
+      context: {} as Record<string, any>,
     };
 
     let totalWeight = 0;
@@ -138,7 +158,10 @@ export class EmailPatternEngine {
   /**
    * Test a single rule against an email
    */
-  private async testRule(email: EmailMetadata, rule: PatternRule): Promise<{
+  private async testRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+  ): Promise<{
     matched: boolean;
     context?: Record<string, any>;
   }> {
@@ -162,12 +185,18 @@ export class EmailPatternEngine {
     }
   }
 
-  private testSenderRule(email: EmailMetadata, rule: PatternRule, caseSensitive: boolean): {
+  private testSenderRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+    caseSensitive: boolean,
+  ): {
     matched: boolean;
     context?: Record<string, any>;
   } {
     const sender = caseSensitive ? email.from : email.from.toLowerCase();
-    const value = caseSensitive ? rule.value as string : (rule.value as string).toLowerCase();
+    const value = caseSensitive
+      ? (rule.value as string)
+      : (rule.value as string).toLowerCase();
 
     let matched = false;
 
@@ -194,16 +223,22 @@ export class EmailPatternEngine {
 
     return {
       matched,
-      context: matched ? { matchedSender: email.from } : undefined
+      context: matched ? { matchedSender: email.from } : undefined,
     };
   }
 
-  private testSubjectRule(email: EmailMetadata, rule: PatternRule, caseSensitive: boolean): {
+  private testSubjectRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+    caseSensitive: boolean,
+  ): {
     matched: boolean;
     context?: Record<string, any>;
   } {
     const subject = caseSensitive ? email.subject : email.subject.toLowerCase();
-    const value = caseSensitive ? rule.value as string : (rule.value as string).toLowerCase();
+    const value = caseSensitive
+      ? (rule.value as string)
+      : (rule.value as string).toLowerCase();
 
     let matched = false;
 
@@ -230,18 +265,24 @@ export class EmailPatternEngine {
 
     return {
       matched,
-      context: matched ? { matchedSubject: email.subject } : undefined
+      context: matched ? { matchedSubject: email.subject } : undefined,
     };
   }
 
-  private testContentRule(email: EmailMetadata, rule: PatternRule, caseSensitive: boolean): {
+  private testContentRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+    caseSensitive: boolean,
+  ): {
     matched: boolean;
     context?: Record<string, any>;
   } {
     if (!email.content) return { matched: false };
 
     const content = caseSensitive ? email.content : email.content.toLowerCase();
-    const value = caseSensitive ? rule.value as string : (rule.value as string).toLowerCase();
+    const value = caseSensitive
+      ? (rule.value as string)
+      : (rule.value as string).toLowerCase();
 
     let matched = false;
 
@@ -260,11 +301,14 @@ export class EmailPatternEngine {
 
     return {
       matched,
-      context: matched ? { contentLength: email.content.length } : undefined
+      context: matched ? { contentLength: email.content.length } : undefined,
     };
   }
 
-  private testTimeRule(email: EmailMetadata, rule: PatternRule): {
+  private testTimeRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+  ): {
     matched: boolean;
     context?: Record<string, any>;
   } {
@@ -294,7 +338,10 @@ export class EmailPatternEngine {
     return { matched, context };
   }
 
-  private testFrequencyRule(email: EmailMetadata, rule: PatternRule): {
+  private testFrequencyRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+  ): {
     matched: boolean;
     context?: Record<string, any>;
   } {
@@ -304,7 +351,7 @@ export class EmailPatternEngine {
     let matched = false;
     const context = {
       senderFrequency: senderData.count,
-      lastSeen: senderData.lastSeen
+      lastSeen: senderData.lastSeen,
     };
 
     switch (rule.operator) {
@@ -319,7 +366,10 @@ export class EmailPatternEngine {
     return { matched, context };
   }
 
-  private testChainRule(email: EmailMetadata, rule: PatternRule): {
+  private testChainRule(
+    email: EmailMetadata,
+    rule: PatternRule,
+  ): {
     matched: boolean;
     context?: Record<string, any>;
   } {
@@ -353,7 +403,7 @@ export class EmailPatternEngine {
       this.senderFrequency.set(email.from, {
         count: 1,
         lastSeen: new Date(),
-        categories: []
+        categories: [],
       });
     }
   }
@@ -402,17 +452,21 @@ export class EmailPatternEngine {
     // Update patterns based on feedback
     this.updatePatternsFromFeedback(data);
 
-    logger.info({
-      emailId: data.emailId,
-      feedback: data.userFeedback,
-      originalClassification: data.originalClassification
-    }, 'Learning data added for pattern improvement');
+    logger.info(
+      {
+        emailId: data.emailId,
+        feedback: data.userFeedback,
+        originalClassification: data.originalClassification,
+      },
+      'Learning data added for pattern improvement',
+    );
   }
 
   private updatePatternsFromFeedback(data: LearningData): void {
     // Find patterns that matched this email
-    const relevantPatterns = Array.from(this.patterns.values())
-      .filter(p => p.category === data.originalClassification && p.learningEnabled);
+    const relevantPatterns = Array.from(this.patterns.values()).filter(
+      (p) => p.category === data.originalClassification && p.learningEnabled,
+    );
 
     for (const pattern of relevantPatterns) {
       if (data.userFeedback === 'incorrect') {
@@ -434,14 +488,20 @@ export class EmailPatternEngine {
   /**
    * Get sender frequency data
    */
-  public getSenderFrequency(sender: string): { count: number; lastSeen: Date; categories: EmailCategory[] } | undefined {
+  public getSenderFrequency(
+    sender: string,
+  ):
+    | { count: number; lastSeen: Date; categories: EmailCategory[] }
+    | undefined {
     return this.senderFrequency.get(sender);
   }
 
   /**
    * Get time patterns for a sender
    */
-  public getTimePatterns(sender: string): { hourCounts: number[]; dayCounts: number[] } | undefined {
+  public getTimePatterns(
+    sender: string,
+  ): { hourCounts: number[]; dayCounts: number[] } | undefined {
     return this.timePatterns.get(sender);
   }
 
@@ -450,7 +510,10 @@ export class EmailPatternEngine {
    */
   public addPattern(pattern: Pattern): void {
     this.patterns.set(pattern.id, pattern);
-    logger.info({ patternId: pattern.id, name: pattern.name }, 'Custom pattern added');
+    logger.info(
+      { patternId: pattern.id, name: pattern.name },
+      'Custom pattern added',
+    );
   }
 
   /**
@@ -508,8 +571,8 @@ export class EmailPatternEngine {
           field: 'weekend',
           value: 'true',
           weight: 20,
-        }
-      ]
+        },
+      ],
     });
 
     // Financial/Commission Pattern
@@ -538,8 +601,8 @@ export class EmailPatternEngine {
           operator: 'contains',
           value: '$',
           weight: 15,
-        }
-      ]
+        },
+      ],
     });
 
     // Client Communication Pattern
@@ -568,8 +631,8 @@ export class EmailPatternEngine {
           operator: 'contains',
           value: 'reply',
           weight: 20,
-        }
-      ]
+        },
+      ],
     });
 
     // Recruitment Prospect Pattern
@@ -598,8 +661,8 @@ export class EmailPatternEngine {
           operator: 'count',
           value: 1,
           weight: 15, // First-time senders often prospects
-        }
-      ]
+        },
+      ],
     });
 
     // Calendar/Meeting Pattern
@@ -628,8 +691,8 @@ export class EmailPatternEngine {
           operator: 'time_range',
           value: '9-17', // Business hours
           weight: 15,
-        }
-      ]
+        },
+      ],
     });
 
     // Spam/Marketing Pattern
@@ -659,8 +722,8 @@ export class EmailPatternEngine {
           operator: 'regex',
           value: '(click here|act now|free|winner)',
           weight: 25,
-        }
-      ]
+        },
+      ],
     });
 
     // Off-hours Critical Pattern
@@ -689,10 +752,13 @@ export class EmailPatternEngine {
           operator: 'regex',
           value: '(urgent|emergency|asap|immediate)',
           weight: 30,
-        }
-      ]
+        },
+      ],
     });
 
-    logger.info({ patternCount: this.patterns.size }, 'Default email patterns initialized');
+    logger.info(
+      { patternCount: this.patterns.size },
+      'Default email patterns initialized',
+    );
   }
 }

@@ -40,7 +40,7 @@ export enum EmailCategory {
   VENDOR_OPERATIONAL = 'vendor_operational',
   MARKETING_ANALYTICS = 'marketing_analytics',
   PERSONAL_ADMIN = 'personal_admin',
-  SPAM_NOISE = 'spam_noise'
+  SPAM_NOISE = 'spam_noise',
 }
 
 export enum Priority {
@@ -48,15 +48,15 @@ export enum Priority {
   HIGH = 'HIGH',
   MEDIUM = 'MEDIUM',
   LOW = 'LOW',
-  ARCHIVE = 'ARCHIVE'
+  ARCHIVE = 'ARCHIVE',
 }
 
 export enum UrgencyLevel {
-  IMMEDIATE = 'immediate',    // <5 min
-  FAST_TRACK = 'fast_track',  // <30 min
-  STANDARD = 'standard',      // <2 hrs
-  BATCH = 'batch',           // Next scheduled run
-  NONE = 'none'              // No urgency
+  IMMEDIATE = 'immediate', // <5 min
+  FAST_TRACK = 'fast_track', // <30 min
+  STANDARD = 'standard', // <2 hrs
+  BATCH = 'batch', // Next scheduled run
+  NONE = 'none', // No urgency
 }
 
 export enum EmailAction {
@@ -66,7 +66,7 @@ export enum EmailAction {
   BATCH_PROCESS = 'batch_process',
   AUTO_ARCHIVE = 'auto_archive',
   SPAM_FILTER = 'spam_filter',
-  ESCALATE = 'escalate'
+  ESCALATE = 'escalate',
 }
 
 export interface EscalationConfig {
@@ -103,7 +103,7 @@ export class EmailClassificationEngine {
 
   // SIMPLIFIED SINGLE CHANNEL CONFIGURATION
   private discordChannels = {
-    EMAIL_TRIAGE: '1484841234567890128',         // Single unified email triage channel
+    EMAIL_TRIAGE: '1484841234567890128', // Single unified email triage channel
     // Keep fallback references for backwards compatibility
     BUSINESS_CRITICAL: '1484841234567890128',
     CLIENT_COMMUNICATIONS: '1484841234567890128',
@@ -113,7 +113,7 @@ export class EmailClassificationEngine {
     VENDOR: '1484841234567890128',
     ANALYTICS: '1484841234567890128',
     GENERAL: '1484841234567890128',
-    ARCHIVE: '1484841234567890128'
+    ARCHIVE: '1484841234567890128',
   };
 
   // VIP sender patterns (case-insensitive)
@@ -125,44 +125,109 @@ export class EmailClassificationEngine {
     '@mutualofomaha.com',
     '@transamerica.com',
     '@aglife.com',
-    '@corebridge.com'
+    '@corebridge.com',
   ];
 
   // High priority keywords by category
   private criticalKeywords = [
-    'urgent', 'immediate', 'asap', 'emergency', 'critical',
-    'legal', 'lawsuit', 'court', 'deadline', 'compliance',
-    'complaint', 'issue', 'problem', 'error', 'failure'
+    'urgent',
+    'immediate',
+    'asap',
+    'emergency',
+    'critical',
+    'legal',
+    'lawsuit',
+    'court',
+    'deadline',
+    'compliance',
+    'complaint',
+    'issue',
+    'problem',
+    'error',
+    'failure',
   ];
 
   private financialKeywords = [
-    'commission', 'payment', 'invoice', 'statement', 'earnings',
-    'compensation', '1099', 'tax', 'deposit', 'wire', 'ach',
-    'overdue', 'balance', 'refund', 'chargeback'
+    'commission',
+    'payment',
+    'invoice',
+    'statement',
+    'earnings',
+    'compensation',
+    '1099',
+    'tax',
+    'deposit',
+    'wire',
+    'ach',
+    'overdue',
+    'balance',
+    'refund',
+    'chargeback',
   ];
 
   private clientKeywords = [
-    'client', 'customer', 'policy', 'coverage', 'claim',
-    'beneficiary', 'application', 'quote', 'premium',
-    'cancellation', 'renewal', 'service'
+    'client',
+    'customer',
+    'policy',
+    'coverage',
+    'claim',
+    'beneficiary',
+    'application',
+    'quote',
+    'premium',
+    'cancellation',
+    'renewal',
+    'service',
   ];
 
   private recruitmentKeywords = [
-    'agent', 'recruit', 'interview', 'hire', 'opportunity',
-    'partnership', 'join', 'career', 'position', 'resume',
-    'application', 'interested', 'team'
+    'agent',
+    'recruit',
+    'interview',
+    'hire',
+    'opportunity',
+    'partnership',
+    'join',
+    'career',
+    'position',
+    'resume',
+    'application',
+    'interested',
+    'team',
   ];
 
   private calendarKeywords = [
-    'meeting', 'appointment', 'schedule', 'calendar', 'zoom',
-    'call', 'conference', 'reschedule', 'cancel', 'confirm',
-    'reminder', 'today', 'tomorrow', 'time'
+    'meeting',
+    'appointment',
+    'schedule',
+    'calendar',
+    'zoom',
+    'call',
+    'conference',
+    'reschedule',
+    'cancel',
+    'confirm',
+    'reminder',
+    'today',
+    'tomorrow',
+    'time',
   ];
 
   private spamIndicators = [
-    'unsubscribe', 'newsletter', 'marketing', 'promotion',
-    'deal', 'sale', 'discount', 'offer', 'limited time',
-    'click here', 'act now', 'free', 'winner', 'congratulations'
+    'unsubscribe',
+    'newsletter',
+    'marketing',
+    'promotion',
+    'deal',
+    'sale',
+    'discount',
+    'offer',
+    'limited time',
+    'click here',
+    'act now',
+    'free',
+    'winner',
+    'congratulations',
   ];
 
   constructor() {
@@ -173,7 +238,9 @@ export class EmailClassificationEngine {
   /**
    * Main classification method
    */
-  public async classifyEmail(email: EmailMetadata): Promise<ClassificationResult> {
+  public async classifyEmail(
+    email: EmailMetadata,
+  ): Promise<ClassificationResult> {
     logger.debug({ emailId: email.id }, 'Starting email classification');
 
     // Initial scoring
@@ -192,24 +259,33 @@ export class EmailClassificationEngine {
     // Update sender reputation
     this.updateSenderReputation(email);
 
-    logger.info({
-      emailId: email.id,
-      category: result.category,
-      priority: result.priority,
-      confidence: result.confidence
-    }, 'Email classified');
+    logger.info(
+      {
+        emailId: email.id,
+        category: result.category,
+        priority: result.priority,
+        confidence: result.confidence,
+      },
+      'Email classified',
+    );
 
     return result;
   }
 
   private initializeScores(): Record<EmailCategory, number> {
-    return Object.values(EmailCategory).reduce((acc, category) => {
-      acc[category] = 0;
-      return acc;
-    }, {} as Record<EmailCategory, number>);
+    return Object.values(EmailCategory).reduce(
+      (acc, category) => {
+        acc[category] = 0;
+        return acc;
+      },
+      {} as Record<EmailCategory, number>,
+    );
   }
 
-  private analyzeSender(email: EmailMetadata, scores: Record<EmailCategory, number>): void {
+  private analyzeSender(
+    email: EmailMetadata,
+    scores: Record<EmailCategory, number>,
+  ): void {
     const fromLower = email.from.toLowerCase();
     const fromDomain = this.extractDomain(fromLower);
 
@@ -243,46 +319,49 @@ export class EmailClassificationEngine {
     }
   }
 
-  private analyzeSubject(email: EmailMetadata, scores: Record<EmailCategory, number>): void {
+  private analyzeSubject(
+    email: EmailMetadata,
+    scores: Record<EmailCategory, number>,
+  ): void {
     const subject = email.subject.toLowerCase();
 
     // Critical keywords
-    this.criticalKeywords.forEach(keyword => {
+    this.criticalKeywords.forEach((keyword) => {
       if (subject.includes(keyword)) {
         scores[EmailCategory.BUSINESS_CRITICAL] += 25;
       }
     });
 
     // Financial keywords
-    this.financialKeywords.forEach(keyword => {
+    this.financialKeywords.forEach((keyword) => {
       if (subject.includes(keyword)) {
         scores[EmailCategory.FINANCIAL_INSURANCE] += 20;
       }
     });
 
     // Client keywords
-    this.clientKeywords.forEach(keyword => {
+    this.clientKeywords.forEach((keyword) => {
       if (subject.includes(keyword)) {
         scores[EmailCategory.CLIENT_COMMUNICATIONS] += 20;
       }
     });
 
     // Recruitment keywords
-    this.recruitmentKeywords.forEach(keyword => {
+    this.recruitmentKeywords.forEach((keyword) => {
       if (subject.includes(keyword)) {
         scores[EmailCategory.RECRUITMENT_PROSPECTS] += 20;
       }
     });
 
     // Calendar keywords
-    this.calendarKeywords.forEach(keyword => {
+    this.calendarKeywords.forEach((keyword) => {
       if (subject.includes(keyword)) {
         scores[EmailCategory.CALENDAR_SCHEDULING] += 25;
       }
     });
 
     // Spam indicators
-    this.spamIndicators.forEach(indicator => {
+    this.spamIndicators.forEach((indicator) => {
       if (subject.includes(indicator)) {
         scores[EmailCategory.SPAM_NOISE] += 15;
       }
@@ -294,7 +373,10 @@ export class EmailClassificationEngine {
     }
   }
 
-  private analyzeContent(email: EmailMetadata, scores: Record<EmailCategory, number>): void {
+  private analyzeContent(
+    email: EmailMetadata,
+    scores: Record<EmailCategory, number>,
+  ): void {
     if (!email.content) return;
 
     const content = email.content.toLowerCase();
@@ -313,7 +395,8 @@ export class EmailClassificationEngine {
 
     // Sentiment analysis (basic)
     const sentiment = this.analyzeSentiment(content);
-    if (sentiment < -0.3) { // Negative sentiment
+    if (sentiment < -0.3) {
+      // Negative sentiment
       scores[EmailCategory.BUSINESS_CRITICAL] += 20;
       scores[EmailCategory.CLIENT_COMMUNICATIONS] += 15;
     }
@@ -325,10 +408,14 @@ export class EmailClassificationEngine {
     }
   }
 
-  private analyzeTimeContext(email: EmailMetadata, scores: Record<EmailCategory, number>): void {
+  private analyzeTimeContext(
+    email: EmailMetadata,
+    scores: Record<EmailCategory, number>,
+  ): void {
     const emailTime = new Date(email.timestamp);
     const currentTime = new Date();
-    const hoursSinceReceived = (currentTime.getTime() - emailTime.getTime()) / (1000 * 60 * 60);
+    const hoursSinceReceived =
+      (currentTime.getTime() - emailTime.getTime()) / (1000 * 60 * 60);
 
     // Age-based scoring
     if (hoursSinceReceived > 24) {
@@ -350,7 +437,10 @@ export class EmailClassificationEngine {
     }
   }
 
-  private applySenderReputation(email: EmailMetadata, scores: Record<EmailCategory, number>): void {
+  private applySenderReputation(
+    email: EmailMetadata,
+    scores: Record<EmailCategory, number>,
+  ): void {
     const reputation = this.getSenderReputation(email.from);
     if (!reputation) return;
 
@@ -367,11 +457,27 @@ export class EmailClassificationEngine {
     }
   }
 
-  private finalizeClassification(email: EmailMetadata, scores: Record<EmailCategory, number>): ClassificationResult {
+  private finalizeClassification(
+    email: EmailMetadata,
+    scores: Record<EmailCategory, number>,
+  ): ClassificationResult {
+    // Spam override: if spam score is significant, dampen other categories
+    const spamScore = scores[EmailCategory.SPAM_NOISE] || 0;
+    if (spamScore > 30) {
+      for (const cat of Object.keys(scores) as EmailCategory[]) {
+        if (cat !== EmailCategory.SPAM_NOISE) {
+          scores[cat] = Math.floor(scores[cat] * 0.5);
+        }
+      }
+    }
+
     // Find highest scoring category
-    const topCategory = Object.entries(scores).reduce((max, [category, score]) =>
-      score > max.score ? { category: category as EmailCategory, score } : max,
-      { category: EmailCategory.PERSONAL_ADMIN, score: 0 }
+    const topCategory = Object.entries(scores).reduce(
+      (max, [category, score]) =>
+        score > max.score
+          ? { category: category as EmailCategory, score }
+          : max,
+      { category: EmailCategory.PERSONAL_ADMIN, score: 0 },
     );
 
     const category = topCategory.category;
@@ -402,51 +508,85 @@ export class EmailClassificationEngine {
       discordChannel,
       escalation,
       confidence,
-      sentiment: email.content ? this.analyzeSentiment(email.content.toLowerCase()) : undefined,
+      sentiment: email.content
+        ? this.analyzeSentiment(email.content.toLowerCase())
+        : undefined,
       routing: {
         primary: discordChannel,
-        fallback: this.discordChannels.EMAIL_TRIAGE
-      }
+        fallback: this.discordChannels.EMAIL_TRIAGE,
+      },
     };
   }
 
-  private calculatePriority(category: EmailCategory, score: number, email: EmailMetadata): Priority {
+  private calculatePriority(
+    category: EmailCategory,
+    score: number,
+    email: EmailMetadata,
+  ): Priority {
+    // Gmail already classifies promos/social/updates — trust it
+    const labels = (email as { labels?: string[] }).labels || [];
+    const isGmailPromo = labels.some((l: string) =>
+      ['CATEGORY_PROMOTIONS', 'CATEGORY_UPDATES', 'CATEGORY_SOCIAL', 'SPAM'].includes(l),
+    );
+    if (isGmailPromo) {
+      return Priority.LOW;
+    }
+
     if (category === EmailCategory.SPAM_NOISE && score > 40) {
       return Priority.ARCHIVE;
     }
 
-    if (category === EmailCategory.BUSINESS_CRITICAL || score > 80) {
+    // CRITICAL requires VIP sender + strong signals — not just keyword matches
+    const isVip = this.isVipSender(email.from.toLowerCase());
+    if (category === EmailCategory.BUSINESS_CRITICAL && isVip && score > 60) {
       return Priority.CRITICAL;
     }
 
-    if (category === EmailCategory.FINANCIAL_INSURANCE ||
-        category === EmailCategory.CLIENT_COMMUNICATIONS ||
-        this.isVipSender(email.from.toLowerCase())) {
+    // Non-VIP BUSINESS_CRITICAL caps at HIGH
+    if (category === EmailCategory.BUSINESS_CRITICAL) {
       return Priority.HIGH;
     }
 
-    if (category === EmailCategory.RECRUITMENT_PROSPECTS ||
-        category === EmailCategory.CALENDAR_SCHEDULING) {
+    if (
+      category === EmailCategory.FINANCIAL_INSURANCE ||
+      category === EmailCategory.CLIENT_COMMUNICATIONS ||
+      isVip
+    ) {
+      return Priority.HIGH;
+    }
+
+    if (
+      category === EmailCategory.RECRUITMENT_PROSPECTS ||
+      category === EmailCategory.CALENDAR_SCHEDULING
+    ) {
       return Priority.MEDIUM;
     }
 
     return Priority.LOW;
   }
 
-  private calculateUrgency(category: EmailCategory, priority: Priority, email: EmailMetadata): UrgencyLevel {
+  private calculateUrgency(
+    category: EmailCategory,
+    priority: Priority,
+    email: EmailMetadata,
+  ): UrgencyLevel {
     const subject = email.subject.toLowerCase();
 
     // Immediate urgency triggers
-    if (priority === Priority.CRITICAL ||
-        this.hasTimeUrgency(subject) ||
-        this.isCalendarConflict(email)) {
+    if (
+      priority === Priority.CRITICAL ||
+      this.hasTimeUrgency(subject) ||
+      this.isCalendarConflict(email)
+    ) {
       return UrgencyLevel.IMMEDIATE;
     }
 
     // Fast track scenarios
-    if (priority === Priority.HIGH ||
-        category === EmailCategory.RECRUITMENT_PROSPECTS ||
-        this.isMeetingRequest(subject)) {
+    if (
+      priority === Priority.HIGH ||
+      category === EmailCategory.RECRUITMENT_PROSPECTS ||
+      this.isMeetingRequest(subject)
+    ) {
       return UrgencyLevel.FAST_TRACK;
     }
 
@@ -463,7 +603,11 @@ export class EmailClassificationEngine {
     return UrgencyLevel.NONE;
   }
 
-  private determineAction(category: EmailCategory, priority: Priority, urgency: UrgencyLevel): EmailAction {
+  private determineAction(
+    category: EmailCategory,
+    priority: Priority,
+    urgency: UrgencyLevel,
+  ): EmailAction {
     if (urgency === UrgencyLevel.IMMEDIATE) {
       return EmailAction.IMMEDIATE_ALERT;
     }
@@ -487,13 +631,17 @@ export class EmailClassificationEngine {
     return EmailAction.BATCH_PROCESS;
   }
 
-  private configureEscalation(category: EmailCategory, priority: Priority, urgency: UrgencyLevel): EscalationConfig | undefined {
+  private configureEscalation(
+    category: EmailCategory,
+    priority: Priority,
+    urgency: UrgencyLevel,
+  ): EscalationConfig | undefined {
     if (urgency === UrgencyLevel.IMMEDIATE) {
       return {
         type: 'time_based',
         delayMs: 5 * 60 * 1000, // 5 minutes
         channels: [this.discordChannels.BUSINESS_CRITICAL],
-        mentions: ['@here']
+        mentions: ['@here'],
       };
     }
 
@@ -501,7 +649,7 @@ export class EmailClassificationEngine {
       return {
         type: 'time_based',
         delayMs: 30 * 60 * 1000, // 30 minutes
-        channels: [this.discordChannels.BUSINESS_CRITICAL]
+        channels: [this.discordChannels.BUSINESS_CRITICAL],
       };
     }
 
@@ -514,7 +662,11 @@ export class EmailClassificationEngine {
     return this.discordChannels.EMAIL_TRIAGE;
   }
 
-  private generateReason(category: EmailCategory, score: number, email: EmailMetadata): string {
+  private generateReason(
+    category: EmailCategory,
+    score: number,
+    email: EmailMetadata,
+  ): string {
     const reasons: string[] = [];
 
     if (this.isVipSender(email.from.toLowerCase())) {
@@ -530,43 +682,60 @@ export class EmailClassificationEngine {
     }
 
     const categoryReasons: Record<EmailCategory, string> = {
-      [EmailCategory.BUSINESS_CRITICAL]: 'Critical business issue requiring immediate attention',
+      [EmailCategory.BUSINESS_CRITICAL]:
+        'Critical business issue requiring immediate attention',
       [EmailCategory.CLIENT_COMMUNICATIONS]: 'Client/customer communication',
-      [EmailCategory.RECRUITMENT_PROSPECTS]: 'Potential agent recruitment opportunity',
+      [EmailCategory.RECRUITMENT_PROSPECTS]:
+        'Potential agent recruitment opportunity',
       [EmailCategory.CALENDAR_SCHEDULING]: 'Meeting or scheduling request',
-      [EmailCategory.FINANCIAL_INSURANCE]: 'Financial, commission, or insurance related',
+      [EmailCategory.FINANCIAL_INSURANCE]:
+        'Financial, commission, or insurance related',
       [EmailCategory.VENDOR_OPERATIONAL]: 'Vendor or operational communication',
       [EmailCategory.MARKETING_ANALYTICS]: 'Marketing or analytics report',
       [EmailCategory.PERSONAL_ADMIN]: 'Personal or administrative matter',
-      [EmailCategory.SPAM_NOISE]: 'Low-value or promotional content'
+      [EmailCategory.SPAM_NOISE]: 'Low-value or promotional content',
     };
 
     const baseReason = categoryReasons[category];
-    return reasons.length > 0 ? `${baseReason} (${reasons.join(', ')})` : baseReason;
+    return reasons.length > 0
+      ? `${baseReason} (${reasons.join(', ')})`
+      : baseReason;
   }
 
   // Helper methods
   private initializeKeywordWeights(): void {
     // Initialize keyword scoring weights
-    this.criticalKeywords.forEach(keyword => this.keywordWeights.set(keyword, 25));
-    this.financialKeywords.forEach(keyword => this.keywordWeights.set(keyword, 20));
-    this.clientKeywords.forEach(keyword => this.keywordWeights.set(keyword, 20));
-    this.recruitmentKeywords.forEach(keyword => this.keywordWeights.set(keyword, 20));
-    this.calendarKeywords.forEach(keyword => this.keywordWeights.set(keyword, 25));
-    this.spamIndicators.forEach(keyword => this.keywordWeights.set(keyword, -15));
+    this.criticalKeywords.forEach((keyword) =>
+      this.keywordWeights.set(keyword, 25),
+    );
+    this.financialKeywords.forEach((keyword) =>
+      this.keywordWeights.set(keyword, 20),
+    );
+    this.clientKeywords.forEach((keyword) =>
+      this.keywordWeights.set(keyword, 20),
+    );
+    this.recruitmentKeywords.forEach((keyword) =>
+      this.keywordWeights.set(keyword, 20),
+    );
+    this.calendarKeywords.forEach((keyword) =>
+      this.keywordWeights.set(keyword, 25),
+    );
+    this.spamIndicators.forEach((keyword) =>
+      this.keywordWeights.set(keyword, -15),
+    );
   }
 
   private loadSenderReputations(): void {
     // Load saved reputation data (would normally come from database)
     // For now, initialize with basic VIP patterns
-    this.vipSenders.forEach(sender => {
+    this.vipSenders.forEach((sender) => {
       this.senderReputations.set(sender, {
         domain: sender,
         score: 95,
         category: 'vip',
         interactionCount: 10,
         lastSeen: new Date().toISOString(),
-        responseRate: 0.9
+        responseRate: 0.9,
       });
     });
   }
@@ -577,16 +746,22 @@ export class EmailClassificationEngine {
   }
 
   private isVipSender(email: string): boolean {
-    return this.vipSenders.some(vip => email.includes(vip.toLowerCase()));
+    return this.vipSenders.some((vip) => email.includes(vip.toLowerCase()));
   }
 
   private isFinancialDomain(domain: string): boolean {
     const financialDomains = [
-      'mutualofomaha.com', 'transamerica.com', 'aglife.com',
-      'corebridge.com', 'paypal.com', 'venmo.com', 'chase.com',
-      'bankofamerica.com', 'wellsfargo.com'
+      'mutualofomaha.com',
+      'transamerica.com',
+      'aglife.com',
+      'corebridge.com',
+      'paypal.com',
+      'venmo.com',
+      'chase.com',
+      'bankofamerica.com',
+      'wellsfargo.com',
     ];
-    return financialDomains.some(fd => domain.includes(fd));
+    return financialDomains.some((fd) => domain.includes(fd));
   }
 
   private isClientDomain(domain: string): boolean {
@@ -596,62 +771,99 @@ export class EmailClassificationEngine {
 
   private isMarketingDomain(domain: string): boolean {
     const marketingDomains = [
-      'mailchimp.com', 'constantcontact.com', 'salesforce.com',
-      'hubspot.com', 'klaviyo.com', 'sendgrid.com'
+      'mailchimp.com',
+      'constantcontact.com',
+      'salesforce.com',
+      'hubspot.com',
+      'klaviyo.com',
+      'sendgrid.com',
     ];
-    return marketingDomains.some(md => domain.includes(md));
+    return marketingDomains.some((md) => domain.includes(md));
   }
 
   private isSpamDomain(domain: string): boolean {
     const spamDomains = [
-      'tempmail.com', '10minutemail.com', 'guerrillamail.com'
+      'tempmail.com',
+      '10minutemail.com',
+      'guerrillamail.com',
     ];
-    return spamDomains.some(sd => domain.includes(sd));
+    return spamDomains.some((sd) => domain.includes(sd));
   }
 
   private hasTimeUrgency(text: string): boolean {
     const urgencyPatterns = [
-      'urgent', 'asap', 'immediately', 'emergency', 'deadline',
-      'today', 'tomorrow', 'by end of day', 'eod', 'this morning',
-      'time sensitive', 'quick turnaround'
+      'urgent',
+      'asap',
+      'immediately',
+      'emergency',
+      'deadline',
+      'today',
+      'tomorrow',
+      'by end of day',
+      'eod',
+      'this morning',
+      'time sensitive',
+      'quick turnaround',
     ];
-    return urgencyPatterns.some(pattern => text.includes(pattern));
+    return urgencyPatterns.some((pattern) => text.includes(pattern));
   }
 
   private isCalendarConflict(email: EmailMetadata): boolean {
     const subject = email.subject.toLowerCase();
-    return subject.includes('conflict') ||
-           subject.includes('reschedule') ||
-           (subject.includes('meeting') && subject.includes('today'));
+    return (
+      subject.includes('conflict') ||
+      subject.includes('reschedule') ||
+      (subject.includes('meeting') && subject.includes('today'))
+    );
   }
 
   private isMeetingRequest(subject: string): boolean {
-    return subject.includes('meeting') ||
-           subject.includes('schedule') ||
-           subject.includes('call') ||
-           subject.includes('appointment');
+    return (
+      subject.includes('meeting') ||
+      subject.includes('schedule') ||
+      subject.includes('call') ||
+      subject.includes('appointment')
+    );
   }
 
   private isBusinessEmail(email: EmailMetadata): boolean {
     const businessIndicators = [
       ...this.vipSenders,
-      'business', 'company', 'corp', 'llc', 'inc'
+      'business',
+      'company',
+      'corp',
+      'llc',
+      'inc',
     ];
-    return businessIndicators.some(indicator =>
-      email.from.toLowerCase().includes(indicator.toLowerCase())
+    return businessIndicators.some((indicator) =>
+      email.from.toLowerCase().includes(indicator.toLowerCase()),
     );
   }
 
   private analyzeSentiment(content: string): number {
     // Basic sentiment analysis
-    const positiveWords = ['great', 'excellent', 'good', 'happy', 'pleased', 'satisfied'];
-    const negativeWords = ['problem', 'issue', 'complaint', 'unhappy', 'disappointed', 'frustrated'];
+    const positiveWords = [
+      'great',
+      'excellent',
+      'good',
+      'happy',
+      'pleased',
+      'satisfied',
+    ];
+    const negativeWords = [
+      'problem',
+      'issue',
+      'complaint',
+      'unhappy',
+      'disappointed',
+      'frustrated',
+    ];
 
     let score = 0;
-    positiveWords.forEach(word => {
+    positiveWords.forEach((word) => {
       if (content.includes(word)) score += 0.1;
     });
-    negativeWords.forEach(word => {
+    negativeWords.forEach((word) => {
       if (content.includes(word)) score -= 0.15;
     });
 
@@ -659,16 +871,20 @@ export class EmailClassificationEngine {
   }
 
   private hasBusinessSignature(content: string): boolean {
-    return content.includes('best regards') ||
-           content.includes('sincerely') ||
-           content.includes('@') && content.includes('phone') ||
-           content.includes('title:') ||
-           content.includes('company:');
+    return (
+      content.includes('best regards') ||
+      content.includes('sincerely') ||
+      (content.includes('@') && content.includes('phone')) ||
+      content.includes('title:') ||
+      content.includes('company:')
+    );
   }
 
   private getSenderReputation(email: string): SenderReputation | undefined {
     const domain = this.extractDomain(email);
-    return this.senderReputations.get(email) || this.senderReputations.get(domain);
+    return (
+      this.senderReputations.get(email) || this.senderReputations.get(domain)
+    );
   }
 
   private updateSenderReputation(email: EmailMetadata): void {
@@ -683,7 +899,7 @@ export class EmailClassificationEngine {
         score: 50, // Neutral starting score
         category: 'regular',
         interactionCount: 1,
-        lastSeen: new Date().toISOString()
+        lastSeen: new Date().toISOString(),
       });
     }
   }
@@ -699,7 +915,11 @@ export class EmailClassificationEngine {
   /**
    * Update sender reputation externally (e.g., based on user feedback)
    */
-  public updateSenderScore(email: string, delta: number, category?: 'vip' | 'trusted' | 'regular' | 'suspicious' | 'blocked'): void {
+  public updateSenderScore(
+    email: string,
+    delta: number,
+    category?: 'vip' | 'trusted' | 'regular' | 'suspicious' | 'blocked',
+  ): void {
     let reputation = this.getSenderReputation(email);
     if (!reputation) {
       reputation = {
@@ -707,7 +927,7 @@ export class EmailClassificationEngine {
         score: 50,
         category: 'regular',
         interactionCount: 1,
-        lastSeen: new Date().toISOString()
+        lastSeen: new Date().toISOString(),
       };
       this.senderReputations.set(email, reputation);
     }
