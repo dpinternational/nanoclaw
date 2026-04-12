@@ -239,7 +239,10 @@ export class TelegramChannel implements Channel {
     );
   }
 
-  private async downloadPhoto(photoSizes: any[], chatJid: string): Promise<string> {
+  private async downloadPhoto(
+    photoSizes: any[],
+    chatJid: string,
+  ): Promise<string> {
     if (!this.bot) return '[Photo]';
     try {
       // Get the largest photo size (last in array)
@@ -271,10 +274,15 @@ export class TelegramChannel implements Channel {
       // Download the image
       await new Promise<void>((resolve, reject) => {
         const fileStream = fs.createWriteStream(localPath);
-        https.get(fileUrl, (response) => {
-          response.pipe(fileStream);
-          fileStream.on('finish', () => { fileStream.close(); resolve(); });
-        }).on('error', reject);
+        https
+          .get(fileUrl, (response) => {
+            response.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close();
+              resolve();
+            });
+          })
+          .on('error', reject);
       });
 
       logger.info({ filename, group: group.folder }, 'Photo downloaded');
@@ -313,10 +321,15 @@ export class TelegramChannel implements Channel {
       // Download video
       await new Promise<void>((resolve, reject) => {
         const fileStream = fs.createWriteStream(tmpVideo);
-        https.get(fileUrl, (response) => {
-          response.pipe(fileStream);
-          fileStream.on('finish', () => { fileStream.close(); resolve(); });
-        }).on('error', reject);
+        https
+          .get(fileUrl, (response) => {
+            response.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close();
+              resolve();
+            });
+          })
+          .on('error', reject);
       });
 
       if (!fs.existsSync(tmpVideo) || fs.statSync(tmpVideo).size < 1000) {
@@ -327,26 +340,39 @@ export class TelegramChannel implements Channel {
       const parts: string[] = [];
 
       // Extract key frames (start, 25%, 50%, 75%)
-      const { execSync } = await import('child_process');
+      const { execFileSync } = await import('child_process');
       try {
         // Get video duration
-        const durationStr = execSync(
-          `ffprobe -v quiet -show_entries format=duration -of csv=p=0 "${tmpVideo}"`,
-          { encoding: 'utf-8', timeout: 10000 }
+        const durationStr = execFileSync(
+          'ffprobe',
+          ['-v', 'quiet', '-show_entries', 'format=duration', '-of', 'csv=p=0', tmpVideo],
+          { encoding: 'utf-8', timeout: 10000 },
         ).trim();
         const duration = parseFloat(durationStr) || 10;
 
-        const frameTimestamps = [0, duration * 0.25, duration * 0.5, duration * 0.75];
+        const frameTimestamps = [
+          0,
+          duration * 0.25,
+          duration * 0.5,
+          duration * 0.75,
+        ];
         const framePaths: string[] = [];
 
         for (let i = 0; i < frameTimestamps.length; i++) {
-          const framePath = path.join(imagesDir, `video_frame_${Date.now()}_${i}.jpg`);
+          const framePath = path.join(
+            imagesDir,
+            `video_frame_${Date.now()}_${i}.jpg`,
+          );
           try {
-            execSync(
-              `ffmpeg -y -ss ${frameTimestamps[i]} -i "${tmpVideo}" -vframes 1 -q:v 3 "${framePath}" -loglevel error`,
-              { timeout: 10000 }
+            execFileSync(
+              'ffmpeg',
+              ['-y', '-ss', String(frameTimestamps[i]), '-i', tmpVideo, '-vframes', '1', '-q:v', '3', framePath, '-loglevel', 'error'],
+              { timeout: 10000 },
             );
-            if (fs.existsSync(framePath) && fs.statSync(framePath).size > 1000) {
+            if (
+              fs.existsSync(framePath) &&
+              fs.statSync(framePath).size > 1000
+            ) {
               framePaths.push(framePath);
             }
           } catch {
@@ -360,7 +386,10 @@ export class TelegramChannel implements Channel {
             return `/workspace/group/images/${filename}`;
           });
           parts.push(`[Video frames extracted: ${frameRefs.join(', ')}]`);
-          logger.info({ frames: framePaths.length, group: group.folder }, 'Video frames extracted');
+          logger.info(
+            { frames: framePaths.length, group: group.folder },
+            'Video frames extracted',
+          );
         }
       } catch (err) {
         logger.warn({ err }, 'Failed to extract video frames');
@@ -368,15 +397,18 @@ export class TelegramChannel implements Channel {
 
       // Extract audio and transcribe
       try {
-        execSync(
-          `ffmpeg -y -i "${tmpVideo}" -vn -acodec libopus -b:a 48k "${tmpAudio}" -loglevel error`,
-          { timeout: 30000 }
+        execFileSync(
+          'ffmpeg',
+          ['-y', '-i', tmpVideo, '-vn', '-acodec', 'libopus', '-b:a', '48k', tmpAudio, '-loglevel', 'error'],
+          { timeout: 30000 },
         );
 
         if (fs.existsSync(tmpAudio) && fs.statSync(tmpAudio).size > 1000) {
           const transcript = await this.transcribeVoice(tmpAudio, true);
           if (transcript && transcript !== '[Voice message]') {
-            parts.push(transcript.replace('[Voice message] ', '[Video audio] '));
+            parts.push(
+              transcript.replace('[Voice message] ', '[Video audio] '),
+            );
           }
         }
       } catch (err) {
@@ -397,7 +429,10 @@ export class TelegramChannel implements Channel {
     }
   }
 
-  private async transcribeVoice(fileIdOrPath: string, isLocalFile = false): Promise<string> {
+  private async transcribeVoice(
+    fileIdOrPath: string,
+    isLocalFile = false,
+  ): Promise<string> {
     const env = readEnvFile(['OPENAI_API_KEY']);
     const openaiKey = env.OPENAI_API_KEY;
     if (!openaiKey) {
@@ -428,10 +463,15 @@ export class TelegramChannel implements Channel {
 
         await new Promise<void>((resolve, reject) => {
           const fileStream = fs.createWriteStream(tmpFile);
-          https.get(fileUrl, (response) => {
-            response.pipe(fileStream);
-            fileStream.on('finish', () => { fileStream.close(); resolve(); });
-          }).on('error', reject);
+          https
+            .get(fileUrl, (response) => {
+              response.pipe(fileStream);
+              fileStream.on('finish', () => {
+                fileStream.close();
+                resolve();
+              });
+            })
+            .on('error', reject);
         });
       }
 
@@ -439,24 +479,31 @@ export class TelegramChannel implements Channel {
       const FormData = (await import('form-data')).default;
       const form = new FormData();
       const ext = tmpFile.endsWith('.ogg') ? 'ogg' : 'mp4';
-      form.append('file', fs.createReadStream(tmpFile), { filename: `audio.${ext}` });
+      form.append('file', fs.createReadStream(tmpFile), {
+        filename: `audio.${ext}`,
+      });
       form.append('model', 'whisper-1');
       form.append('language', 'en');
 
       const response = await new Promise<string>((resolve, reject) => {
-        const req = https.request({
-          hostname: 'api.openai.com',
-          path: '/v1/audio/transcriptions',
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiKey}`,
-            ...form.getHeaders(),
+        const req = https.request(
+          {
+            hostname: 'api.openai.com',
+            path: '/v1/audio/transcriptions',
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${openaiKey}`,
+              ...form.getHeaders(),
+            },
           },
-        }, (res) => {
-          let data = '';
-          res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
-          res.on('end', () => resolve(data));
-        });
+          (res) => {
+            let data = '';
+            res.on('data', (chunk: Buffer) => {
+              data += chunk.toString();
+            });
+            res.on('end', () => resolve(data));
+          },
+        );
         req.on('error', reject);
         form.pipe(req);
       });
@@ -465,7 +512,10 @@ export class TelegramChannel implements Channel {
 
       const result = JSON.parse(response);
       if (result.text) {
-        logger.info({ words: result.text.split(' ').length }, 'Voice message transcribed');
+        logger.info(
+          { words: result.text.split(' ').length },
+          'Voice message transcribed',
+        );
         return `[Voice message] "${result.text}"`;
       }
       return '[Voice message]';
@@ -491,17 +541,16 @@ export class TelegramChannel implements Channel {
     let placeholder = '[Unknown media]';
     if (message.photo) {
       placeholder = await this.downloadPhoto(message.photo, chatJid);
-    }
-    else if (message.video) {
+    } else if (message.video) {
       placeholder = await this.processVideo(message.video.file_id, chatJid);
-    }
-    else if (message.video_note) {
-      placeholder = await this.processVideo(message.video_note.file_id, chatJid);
-    }
-    else if (message.voice) {
+    } else if (message.video_note) {
+      placeholder = await this.processVideo(
+        message.video_note.file_id,
+        chatJid,
+      );
+    } else if (message.voice) {
       placeholder = await this.transcribeVoice(message.voice.file_id);
-    }
-    else if (message.audio) placeholder = '[Audio]';
+    } else if (message.audio) placeholder = '[Audio]';
     else if (message.document)
       placeholder = `[Document: ${message.document.file_name || 'file'}]`;
     else if (message.sticker)

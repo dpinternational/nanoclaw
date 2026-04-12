@@ -10,6 +10,8 @@ import {
   User,
 } from 'discord.js';
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
@@ -452,9 +454,13 @@ export class DiscordChannel implements Channel {
       const userName = user.username || user.displayName || 'Unknown';
 
       // Call our proactive email reaction handler
+      // SECURITY: Load from project scripts/, NOT from container-writable workspace
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const handlerPath = path.join(__dirname, '..', '..', 'scripts', 'email-reaction-handler.cjs');
       const {
         handleEmailReaction,
-      } = require('/Users/davidprice/nanoclaw/groups/discord_email_campaigns/workspace/email-reaction-handler.cjs');
+      } = require(handlerPath);
 
       await handleEmailReaction(message.content || '', reactionEmoji, user.id);
 
