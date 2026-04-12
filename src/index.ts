@@ -94,6 +94,11 @@ function loadState(): void {
 }
 
 function saveState(): void {
+  // Prune stale cursors for groups no longer registered
+  const activeJids = new Set(Object.keys(registeredGroups));
+  for (const jid of Object.keys(lastAgentTimestamp)) {
+    if (!activeJids.has(jid)) delete lastAgentTimestamp[jid];
+  }
   setRouterState('last_timestamp', lastTimestamp);
   setRouterState('last_agent_timestamp', JSON.stringify(lastAgentTimestamp));
 }
@@ -281,18 +286,24 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         { group: group.name },
         'Agent error after output was sent, skipping cursor rollback to prevent duplicates',
       );
+      queue.consumePipeCursorRollback(chatJid); // Clear unused rollback
       return true;
     }
-    // Roll back cursor so retries can re-process these messages
-    lastAgentTimestamp[chatJid] = previousCursor;
+    // Roll back cursor so retries can re-process these messages.
+    // If messages were piped mid-session, roll back to the pre-pipe cursor
+    // so those piped messages are re-fetched too.
+    const pipeRollback = queue.consumePipeCursorRollback(chatJid);
+    lastAgentTimestamp[chatJid] =
+      pipeRollback !== undefined ? pipeRollback : previousCursor;
     saveState();
     logger.warn(
-      { group: group.name },
+      { group: group.name, rolledBackToPipe: pipeRollback !== undefined },
       'Agent error, rolled back message cursor for retry',
     );
     return false;
   }
 
+  queue.consumePipeCursorRollback(chatJid); // Clear on success
   return true;
 }
 
@@ -456,8 +467,15 @@ async function startMessageLoop(): Promise<void> {
               { chatJid, count: messagesToSend.length },
               'Piped messages to active container',
             );
+            // Save rollback point before advancing cursor, so if the container
+            // crashes before processing these piped messages, recovery can
+            // re-fetch them (recoverPendingMessages compares global vs per-group cursor).
+            const previousPipeCursor = lastAgentTimestamp[chatJid] || '';
             lastAgentTimestamp[chatJid] =
               messagesToSend[messagesToSend.length - 1].timestamp;
+            // Register the rollback point so the container's error handler can
+            // restore it. The queue tracks the pre-pipe cursor per group.
+            queue.setPipeCursorRollback(chatJid, previousPipeCursor);
             saveState();
             // Show typing indicator while the container processes the piped message
             channel

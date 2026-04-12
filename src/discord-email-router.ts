@@ -562,6 +562,12 @@ export class DiscordEmailRouter {
     const lastEscalation = this.escalationHistory.get(emailId);
     if (!lastEscalation) {
       this.escalationHistory.set(emailId, new Date());
+      // Prevent unbounded growth — trim oldest entries when too large
+      if (this.escalationHistory.size > 1000) {
+        const entries = [...this.escalationHistory.entries()]
+          .sort((a, b) => a[1].getTime() - b[1].getTime());
+        this.escalationHistory = new Map(entries.slice(entries.length - 500));
+      }
       return true;
     }
 

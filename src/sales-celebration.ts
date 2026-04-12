@@ -377,10 +377,11 @@ export function checkAndCelebrateSale(
   if (recentlyCelebrated.has(msg.id)) return;
   recentlyCelebrated.add(msg.id);
 
-  // Keep the set from growing forever
+  // Keep the set from growing forever — bulk evict when hitting limit
   if (recentlyCelebrated.size > 500) {
-    const first = recentlyCelebrated.values().next().value;
-    if (first !== undefined) recentlyCelebrated.delete(first);
+    const ids = [...recentlyCelebrated];
+    recentlyCelebrated.clear();
+    for (const id of ids.slice(ids.length - 250)) recentlyCelebrated.add(id);
   }
 
   // Find the Telegram channel

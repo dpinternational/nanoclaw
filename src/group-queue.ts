@@ -34,6 +34,9 @@ export class GroupQueue {
   private processMessagesFn: ((groupJid: string) => Promise<boolean>) | null =
     null;
   private shuttingDown = false;
+  // Track pre-pipe cursor positions so error handlers can roll back
+  // piped messages that the container never processed.
+  private pipeCursorRollbacks = new Map<string, string>();
 
   private getGroup(groupJid: string): GroupState {
     let state = this.groups.get(groupJid);
@@ -175,6 +178,28 @@ export class GroupQueue {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Save the cursor position before a pipe-path advancement so the error
+   * handler can roll back if the container crashes without processing.
+   */
+  setPipeCursorRollback(groupJid: string, cursor: string): void {
+    // Only save the FIRST rollback point per container session — subsequent
+    // pipes should roll all the way back to before the first piped message.
+    if (!this.pipeCursorRollbacks.has(groupJid)) {
+      this.pipeCursorRollbacks.set(groupJid, cursor);
+    }
+  }
+
+  /**
+   * Get and consume the pipe cursor rollback point for a group.
+   * Returns undefined if no piped messages were sent.
+   */
+  consumePipeCursorRollback(groupJid: string): string | undefined {
+    const cursor = this.pipeCursorRollbacks.get(groupJid);
+    this.pipeCursorRollbacks.delete(groupJid);
+    return cursor;
   }
 
   /**
