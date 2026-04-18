@@ -77,6 +77,14 @@ export class TelegramChannel implements Channel {
   }
 
   private async setupWebhookMode(): Promise<boolean> {
+    // WEBHOOK MODE DISABLED — polling-only since Apr 18 2026 RCA.
+    // See docs/webhook-plan-v2.md. Self-signed + raw-IP webhooks silently
+    // decayed on Telegram's side causing 28.5h of blind ingest.
+    // The code below is preserved for reference but is unreachable.
+    logger.info('Telegram polling-only mode (webhook code disabled)');
+    return false;
+
+    // eslint-disable-next-line no-unreachable
     if (!WEBHOOK_ENABLED || !WEBHOOK_DOMAIN) {
       logger.info(
         'Webhook mode disabled or domain not configured, using polling',
@@ -688,32 +696,27 @@ export class TelegramChannel implements Channel {
   private startPollingFallback(): void {
     if (this.pollingFallbackTimer) return;
 
-    // Monitor webhook health and fallback to polling if needed
+    // Monitor webhook health — LOG ONLY, never auto-mutate transport state.
+    // Previous auto-fallback called deleteWebhook() on pending>100 which turned
+    // a weak symptom into a destructive state change. See RCA: Apr 17-18, 2026.
+    // Transport mode is now controlled exclusively by WEBHOOK_ENABLED env var.
     this.pollingFallbackTimer = setInterval(async () => {
       try {
         if (this.isUsingWebhook) {
           const webhookInfo = await this.api.getWebhookInfo();
 
-          // Check for webhook errors
           if (webhookInfo.last_error_message) {
             const errorAge =
               Date.now() - (webhookInfo.last_error_date || 0) * 1000;
             if (errorAge < 300000) {
-              // Recent error (< 5 minutes)
               logger.warn(
                 {
                   error: webhookInfo.last_error_message,
                   errorAge: Math.round(errorAge / 1000),
+                  pending: webhookInfo.pending_update_count,
                 },
-                'Webhook has recent errors, considering fallback to polling',
+                'Webhook recent error (log-only; auto-fallback disabled)',
               );
-
-              // If we have multiple recent errors, fallback
-              if (webhookInfo.pending_update_count > 100) {
-                await this.fallbackToPolling(
-                  'High pending update count with errors',
-                );
-              }
             }
           }
         }
@@ -724,6 +727,14 @@ export class TelegramChannel implements Channel {
   }
 
   private async fallbackToPolling(reason: string): Promise<void> {
+    // NEUTRALIZED — this method used to call deleteWebhook() which turned
+    // a symptom into a destructive state change. See Apr 17-18 2026 RCA.
+    // Webhooks are gone; polling is the only mode. If this is ever called,
+    // it's a logic error somewhere — log and return.
+    logger.warn({ reason }, 'fallbackToPolling() invoked but disabled (polling-only mode)');
+    return;
+
+    // eslint-disable-next-line no-unreachable
     if (!this.isUsingWebhook) return;
 
     logger.warn({ reason }, 'Falling back to polling mode');
@@ -751,6 +762,33 @@ export class TelegramChannel implements Channel {
 
   private async startPolling(): Promise<void> {
     if (!this.bot) return;
+
+    // Liveness heartbeat — written on every polling-cycle probe so the
+    // external monitor can detect "grammy long-poller hung" (Apr 18 2026
+    // incident). Touches /tmp/nanoclaw-telegram-heartbeat.
+    // Also written whenever a real update lands via processMessage().
+    const heartbeatPath = '/tmp/nanoclaw-telegram-heartbeat';
+    const touchHeartbeat = () => {
+      try {
+        fs.writeFileSync(heartbeatPath, String(Date.now()));
+      } catch {
+        // ignore
+      }
+    };
+    // Every 30s: lightweight getMe() confirms the HTTP client is alive.
+    // If grammy's long-poller hangs (TCP pinned but no data), this still
+    // fires because getMe is a separate HTTP request through a new socket.
+    const liveness = setInterval(async () => {
+      try {
+        await this.api.getMe();
+        touchHeartbeat();
+      } catch (err) {
+        logger.warn({ err }, 'Telegram liveness probe failed');
+      }
+    }, 30_000);
+    // Prevent the timer from keeping the event loop alive on shutdown.
+    liveness.unref?.();
+    touchHeartbeat();
 
     return new Promise<void>((resolve) => {
       this.bot!.start({

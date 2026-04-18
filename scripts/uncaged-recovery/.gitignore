@@ -1,0 +1,4 @@
+uncaged_recovery.session
+uncaged_recovery.session-journal
+uncaged_messages.jsonl
+.venv/

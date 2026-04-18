@@ -21,6 +21,17 @@ groups/global/*
 # Secrets
 *.keys.json
 .env
+.env.bak
+.env.backup*
+.env.*.bak
+.env.local
+.env.preserved*
+*.session
+*.session-journal
+# Telethon recovery creds are kept out of the repo entirely (~/.config/nanoclaw-recovery/),
+# but guard against a misplaced file here just in case.
+scripts/uncaged-recovery/*.session*
+scripts/uncaged-recovery/uncaged_messages.jsonl
 
 # Temp files
 .tmp-*
@@ -38,3 +49,5 @@ insurance-scraper/*.log
 
 agents-sdk-docs
 .notion-token
+__pycache__/
+*.pyc

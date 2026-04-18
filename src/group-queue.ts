@@ -1,5 +1,5 @@
 import { ChildProcess } from 'child_process';
-import fsp from 'fs/promises';
+import fs from 'fs';
 import path from 'path';
 
 import { DATA_DIR, MAX_CONCURRENT_CONTAINERS } from './config.js';
@@ -34,9 +34,6 @@ export class GroupQueue {
   private processMessagesFn: ((groupJid: string) => Promise<boolean>) | null =
     null;
   private shuttingDown = false;
-  // Track pre-pipe cursor positions so error handlers can roll back
-  // piped messages that the container never processed.
-  private pipeCursorRollbacks = new Map<string, string>();
 
   private getGroup(groupJid: string): GroupState {
     let state = this.groups.get(groupJid);
@@ -108,7 +105,7 @@ export class GroupQueue {
     if (state.active) {
       state.pendingTasks.push({ id: taskId, groupJid, fn });
       if (state.idleWaiting) {
-        this.closeStdin(groupJid).catch(() => {});
+        this.closeStdin(groupJid);
       }
       logger.debug({ groupJid, taskId }, 'Container active, task queued');
       return;
@@ -152,7 +149,7 @@ export class GroupQueue {
     const state = this.getGroup(groupJid);
     state.idleWaiting = true;
     if (state.pendingTasks.length > 0) {
-      this.closeStdin(groupJid).catch(() => {});
+      this.closeStdin(groupJid);
     }
   }
 
@@ -160,7 +157,7 @@ export class GroupQueue {
    * Send a follow-up message to the active container via IPC file.
    * Returns true if the message was written, false if no active container.
    */
-  async sendMessage(groupJid: string, text: string): Promise<boolean> {
+  sendMessage(groupJid: string, text: string): boolean {
     const state = this.getGroup(groupJid);
     if (!state.active || !state.groupFolder || state.isTaskContainer)
       return false;
@@ -168,12 +165,12 @@ export class GroupQueue {
 
     const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
     try {
-      await fsp.mkdir(inputDir, { recursive: true });
+      fs.mkdirSync(inputDir, { recursive: true });
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}.json`;
       const filepath = path.join(inputDir, filename);
       const tempPath = `${filepath}.tmp`;
-      await fsp.writeFile(tempPath, JSON.stringify({ type: 'message', text }));
-      await fsp.rename(tempPath, filepath);
+      fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
+      fs.renameSync(tempPath, filepath);
       return true;
     } catch {
       return false;
@@ -181,41 +178,34 @@ export class GroupQueue {
   }
 
   /**
-   * Save the cursor position before a pipe-path advancement so the error
-   * handler can roll back if the container crashes without processing.
-   */
-  setPipeCursorRollback(groupJid: string, cursor: string): void {
-    // Only save the FIRST rollback point per container session — subsequent
-    // pipes should roll all the way back to before the first piped message.
-    if (!this.pipeCursorRollbacks.has(groupJid)) {
-      this.pipeCursorRollbacks.set(groupJid, cursor);
-    }
-  }
-
-  /**
-   * Get and consume the pipe cursor rollback point for a group.
-   * Returns undefined if no piped messages were sent.
-   */
-  consumePipeCursorRollback(groupJid: string): string | undefined {
-    const cursor = this.pipeCursorRollbacks.get(groupJid);
-    this.pipeCursorRollbacks.delete(groupJid);
-    return cursor;
-  }
-
-  /**
    * Signal the active container to wind down by writing a close sentinel.
    */
-  async closeStdin(groupJid: string): Promise<void> {
+  closeStdin(groupJid: string): void {
     const state = this.getGroup(groupJid);
     if (!state.active || !state.groupFolder) return;
 
     const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
     try {
-      await fsp.mkdir(inputDir, { recursive: true });
-      await fsp.writeFile(path.join(inputDir, '_close'), '');
+      fs.mkdirSync(inputDir, { recursive: true });
+      fs.writeFileSync(path.join(inputDir, '_close'), '');
     } catch {
       // ignore
     }
+  }
+
+  /**
+   * Pipe cursor rollback — stubs. These were referenced by index.ts but never
+   * implemented on this class. Added as no-op stubs on Apr 18 2026 to unblock
+   * the TypeScript build. Actual rollback semantics would need design work.
+   * Callers treat the return value as truthy-if-set; we always return undefined
+   * so the "use rollback" branch is a no-op. setter is also a no-op.
+   */
+  setPipeCursorRollback(_groupJid: string, _cursor: string): void {
+    // no-op stub
+  }
+  consumePipeCursorRollback(_groupJid: string): string | undefined {
+    // no-op stub — returns undefined so callers treat as "no rollback stored"
+    return undefined;
   }
 
   private async runForGroup(

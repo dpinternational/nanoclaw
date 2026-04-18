@@ -152,6 +152,17 @@ export function _setRegisteredGroups(
   registeredGroups = groups;
 }
 
+/** @internal - exported for testing */
+export function _shouldSuppressOutboundForGroup(jid: string): boolean {
+  if (jid !== 'tg:-1002362081030') return false;
+
+  const group = registeredGroups[jid];
+  if (!group) return false;
+
+  const trigger = group.trigger || '';
+  return /OBSERVATION_MODE|DO_NOT_RESPOND|IMPOSSIBLE_MATCH/i.test(trigger);
+}
+
 /**
  * Process all pending messages for a group.
  * Called by the GroupQueue when it's this group's turn.
@@ -212,7 +223,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         { group: group.name },
         'Idle timeout, closing container stdin',
       );
-      queue.closeStdin(chatJid).catch(() => {});
+      queue.closeStdin(chatJid);
     }, IDLE_TIMEOUT);
   };
 
@@ -661,6 +672,10 @@ async function main(): Promise<void> {
     onProcess: (groupJid, proc, containerName, groupFolder) =>
       queue.registerProcess(groupJid, proc, containerName, groupFolder),
     sendMessage: async (jid, rawText) => {
+      if (_shouldSuppressOutboundForGroup(jid)) {
+        logger.info({ jid }, 'Outbound scheduled-task message suppressed by group silence mode');
+        return;
+      }
       const channel = findChannel(channels, jid);
       if (!channel) {
         logger.warn({ jid }, 'No channel owns JID, cannot send message');
@@ -672,6 +687,10 @@ async function main(): Promise<void> {
   });
   startIpcWatcher({
     sendMessage: (jid, text) => {
+      if (_shouldSuppressOutboundForGroup(jid)) {
+        logger.info({ jid }, 'Outbound IPC message suppressed by group silence mode');
+        return Promise.resolve();
+      }
       const channel = findChannel(channels, jid);
       if (!channel) throw new Error(`No channel for JID: ${jid}`);
       return channel.sendMessage(jid, text);
