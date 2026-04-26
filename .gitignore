@@ -55,3 +55,26 @@ __pycache__/
 # Python virtualenvs (added 2026-04-26 cleanup)
 .venv/
 */.venv/
+
+# Runtime data + backups + caches (Phase 3 cleanup 2026-04-26)
+/nanoclaw.db
+/tmp/
+/.claude/scheduled_tasks.lock
+/.hermes/
+/content-ideas.xlsx
+/download.html
+/tpg-logo.png
+/REPO_HINTS.json
+/.env.preserved-*
+/certs/
+/backups/
+**/__pycache__/
+*.bak
+*.bak-*
+*.pre-fb-autogen.bak
+/backfill-sales.cjs
+
+# Insurance-scraper worker env files (contain credentials)
+insurance-scraper/.env.worker*
+!insurance-scraper/.env.worker.example
+
