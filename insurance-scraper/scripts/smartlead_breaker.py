@@ -92,8 +92,13 @@ def load_secrets() -> dict:
     return env
 
 
+UA = "smartlead-breaker/1.0 (+nanoclaw)"
+
+
 def http_get_json(url: str, timeout: int = 30):
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    req = urllib.request.Request(
+        url, headers={"Accept": "application/json", "User-Agent": UA}
+    )
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
@@ -102,7 +107,7 @@ def http_post_json(url: str, body: dict, timeout: int = 30):
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url, data=data,
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": UA},
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=timeout) as r:
