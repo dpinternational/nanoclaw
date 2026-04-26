@@ -77,3 +77,48 @@ If you find yourself wanting to hot-patch the server, instead:
 - docs/SERVER-MIGRATION.md - server bootstrap notes
 - docs/REQUIREMENTS.md - architecture
 - README.md - philosophy + setup
+
+## Deploying to Hetzner
+
+The Mac is the source of truth. The Hetzner server (root@89.167.109.12,
+/home/david/nanoclaw/) is a deploy target that we treat as read-only from
+the agent's perspective: nothing here writes to the server except a
+deliberate rsync.
+
+Use `scripts/deploy-to-server.sh` for every push to the server.
+
+```
+./scripts/deploy-to-server.sh scripts --dry-run    # always dry-run first
+./scripts/deploy-to-server.sh scripts --execute    # then apply
+./scripts/deploy-to-server.sh insurance-scraper --execute
+```
+
+The script:
+- defaults to dry-run unless `--execute` is given
+- excludes `__pycache__`, `*.pyc`, `.venv`, `*.bak`, `*.bak-*`, `.DS_Store`
+- chowns to `david:david` on the remote post-rsync
+- prints before/after file counts
+- appends to `logs/deploy.log`
+
+## Pre-edit checklist
+
+Before changing anything that runs on the server:
+
+1. `git status` is clean (no random unstaged WIP).
+2. Make the edit on the Mac. Never SSH-edit on the server.
+3. Test locally if at all possible (`npm run build`, unit tests, dry-runs).
+4. Deploy with `./scripts/deploy-to-server.sh <subdir> --dry-run` then
+   `--execute`.
+5. `git add <specific paths> && git commit && git push origin <branch>`.
+
+## What lives where
+
+| Path                        | Source of truth | Runs on        | Notes                                  |
+|-----------------------------|-----------------|----------------|----------------------------------------|
+| `src/`                      | Mac (git)       | Mac (launchd)  | Core NanoClaw orchestrator             |
+| `scripts/`                  | Mac (git)       | Mac + Hetzner  | Deployed via `deploy-to-server.sh`     |
+| `insurance-scraper/`        | Mac (git)       | Hetzner        | Multi-worker scraper, deploy via rsync |
+| `container/`                | Mac (git)       | Mac (Docker)   | Agent container image                  |
+| `groups/`                   | Mac (local)     | Mac            | Per-group memory, gitignored data      |
+| `logs/`                     | Mac (local)     | Mac            | Local logs incl. `deploy.log`          |
+| `/home/david/nanoclaw/` (server) | rsync target | Hetzner    | Never edit directly                    |
