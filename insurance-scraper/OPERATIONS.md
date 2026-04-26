@@ -39,31 +39,3 @@ This clears the `trips` history and daily warn-dedupe table so subsequent warns 
 
 ### Relationship to phase1_guard.py
 `phase1_guard.py` is a separate scraper-worker circuit breaker (docker compose services scraper_w1 / scraper_w2). It is **not** modified by this work and is kept as-is. The Smartlead breaker is an independent script with its own state file (`smartlead_breaker_state.json` vs `phase1_breaker_state.json`).
-
-## Webhook Event Routing
-
-Smartlead webhook events are written to `state/smartlead_webhook_events.jsonl`
-by `smartlead_webhook_receiver.py`. Two independent "tail" scripts consume that
-file and fan out events to operators. Each tracks its own byte-offset state file
-and is safe to run in parallel.
-
-| Script | Destination | Offset state file |
-|---|---|---|
-| `smartlead_reply_router.py` | Telegram DM (David, chat 577469008) | `state/reply_router_offset.json` |
-| `smartlead_discord_bridge.py` | Discord #agent-scraper (channel 1488923847288684604) | `state/discord_router_offset.json` |
-
-### smartlead_discord_bridge.py
-- Posts to Discord via REST (`POST /api/v10/channels/{id}/messages`).
-- Reads `DISCORD_BOT_TOKEN` from `/home/david/nanoclaw/.env`.
-- First run initializes offset to current file size (skips historical events).
-- Bridges: `EMAIL_REPLY`, `EMAIL_BOUNCE`, `LEAD_UNSUBSCRIBED`,
-  `LEAD_CATEGORY_UPDATED`, `EMAIL_OPENED`, `EMAIL_CLICKED`.
-- `EMAIL_OPENED` / `EMAIL_CLICKED` are throttled to 1 message / 10 minutes
-  (high volume). Lead email is omitted from open/click messages.
-- Cron-safe: always exits 0.
-- Log: `logs/discord_bridge.log`.
-
-Cron (user `david`):
-```
-* * * * * cd /home/david/insurance-scraper && /usr/bin/python3 scripts/smartlead_discord_bridge.py >> logs/discord_bridge.log 2>&1
-```
