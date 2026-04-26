@@ -275,6 +275,55 @@ def fetch_already_loaded_ids(sb: Supabase, campaign_id: int) -> set[int]:
     return out
 
 
+# Email patterns that are clearly corporate/role-based, not individual.
+# Excluded from sendable pool — these are shared mailboxes scraped from regulator records.
+CORP_EMAIL_PATTERNS = (
+    "licensing", "compliance", "doinotice", "oms_", "admin@",
+    "info@", "hr@", "operations", "titles@", "office@",
+    "department", "no-reply", "noreply", "donotreply", "do-not-reply",
+    "support@", "agency@", "corporate@", "billing@", "accounts@",
+)
+
+
+def parse_first_last(name: str | None) -> tuple[str, str]:
+    """agents.name format is 'LAST, FIRST MIDDLE'. Return (first_lower, last_lower)."""
+    if not name:
+        return "", ""
+    parts = [p.strip() for p in name.split(",", 1)]
+    last = parts[0].strip().lower() if parts else ""
+    first = ""
+    if len(parts) > 1:
+        first = parts[1].strip().split()[0].lower() if parts[1].strip() else ""
+    return first, last
+
+
+def passes_quality_filter(agent: dict) -> tuple[bool, str | None]:
+    """Apply data-quality rules from 2026-04-26 audit.
+
+    Reject if:
+      1. email matches corporate pattern (licensing@, doinotice@, etc.)
+      2. NEITHER first(>=2 chars) NOR last(>=3 chars) appears in email local-part
+
+    Returns (ok, reason_if_failed)
+    """
+    email = (agent.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return False, "no_email"
+    local = email.split("@", 1)[0]
+
+    for pat in CORP_EMAIL_PATTERNS:
+        if pat in email:
+            return False, f"corp_pattern:{pat}"
+
+    first, last = parse_first_last(agent.get("name"))
+    first_match = bool(first) and len(first) >= 2 and first[:2] in local
+    last_match = bool(last) and len(last) >= 3 and last[:3] in local
+    if not (first_match or last_match):
+        return False, "name_email_mismatch"
+
+    return True, None
+
+
 def fetch_candidates(sb: Supabase, segment: str, limit: int,
                      exclude_ids: set[int]) -> list[dict]:
     base_params: dict = {
@@ -292,19 +341,36 @@ def fetch_candidates(sb: Supabase, segment: str, limit: int,
     else:
         raise ValueError(f"Unknown segment: {segment}")
 
-    # Over-fetch so we can locally filter excludes and still hit `limit`.
-    fetch_size = min(MAX_LIMIT * 4, max(limit * 5, 200))
+    # Over-fetch generously: ~25% of verified pool fails quality filter, so
+    # multiply requested limit by 6 (cap at 1000) to reduce re-fetches.
+    fetch_size = min(1000, max(limit * 6, 300))
     base_params["limit"] = fetch_size
     rows = sb.select("agents", base_params)
+
     out: list[dict] = []
+    rejected: dict[str, int] = {}
     for r in rows:
         if r.get("id") in exclude_ids:
             continue
         if not r.get("email"):
+            rejected["no_email"] = rejected.get("no_email", 0) + 1
+            continue
+        ok, reason = passes_quality_filter(r)
+        if not ok:
+            key = (reason or "unknown").split(":", 1)[0]
+            rejected[key] = rejected.get(key, 0) + 1
             continue
         out.append(r)
         if len(out) >= limit:
             break
+
+    # Stash rejection breakdown on the list object so caller can log it.
+    out_attrs = getattr(out, "__dict__", None)
+    if out_attrs is not None:
+        out_attrs["rejected"] = rejected
+    # fallback: print summary line for visibility in cron logs
+    if rejected:
+        print(f"  quality-filter rejections: {rejected}", flush=True)
     return out
 
 
