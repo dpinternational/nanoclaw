@@ -1,0 +1,19 @@
+[Unit]
+Description=Smartlead Webhook Receiver
+After=network.target
+
+[Service]
+Type=simple
+User=david
+Group=david
+WorkingDirectory=/home/david/insurance-scraper
+Environment=PYTHONUNBUFFERED=1
+Environment=SMARTLEAD_WEBHOOK_HOST=0.0.0.0
+Environment=SMARTLEAD_WEBHOOK_PORT=3002
+Environment=SMARTLEAD_WEBHOOK_PATH=/smartlead/webhook
+ExecStart=/usr/bin/python3 /home/david/insurance-scraper/scripts/smartlead_webhook_receiver.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

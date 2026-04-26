@@ -1,0 +1,34 @@
+services:
+  scraper_w1:
+    build: .
+    shm_size: '2gb'
+    restart: always
+    env_file: .env.worker1
+    environment:
+      - HEADLESS=true
+      - INTER_STATE_SLEEP=300
+      - WORKER_ID=scraper-w1
+      - RUNNING_STALE_MINUTES=120
+      - ENABLE_MONTHLY_RESET=false
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  scraper_w2:
+    build: .
+    shm_size: '2gb'
+    restart: always
+    env_file: .env.worker2
+    environment:
+      - HEADLESS=true
+      - INTER_STATE_SLEEP=300
+      - WORKER_ID=scraper-w2
+      - RUNNING_STALE_MINUTES=120
+      - ENABLE_MONTHLY_RESET=false
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"

@@ -1,0 +1,14 @@
+services:
+  scraper:
+    build: .
+    shm_size: '2gb'
+    restart: always
+    env_file: .env
+    environment:
+      - HEADLESS=true
+      - INTER_STATE_SLEEP=3600
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"

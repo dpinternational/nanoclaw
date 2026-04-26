@@ -1,0 +1,9 @@
+# Canonical allowlist for cold outreach sends.
+# Only these sender mailboxes are approved to send until explicitly updated.
+# Source: TrulyInbox UI "Ready for Outreach" review on 2026-04-25.
+
+david@davidpricetpg.com
+david@davidpriceinsurance.com
+david@growtpg.com
+david@tpgagents.com
+david@tpgopportunity.com

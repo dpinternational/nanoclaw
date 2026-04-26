@@ -1,7 +1,22 @@
-import os, requests
+import os
+import subprocess
+from pathlib import Path
+
+import requests
 
 base='https://server.smartlead.ai/api/v1'
 key=os.environ['SMARTLEAD_API_KEY']
+ROOT = Path(__file__).resolve().parents[1]
+READY_GUARD = ROOT / 'scripts' / 'enforce_ready_senders.py'
+
+
+def require_ready_senders():
+    cmd = ['python3', str(READY_GUARD), '--strict-auth']
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        print(r.stdout)
+        print(r.stderr)
+        raise RuntimeError('BLOCKED: ready-sender preflight failed; refusing campaign sequence changes')
 
 
 def upsert_sequences(campaign_id, sequences):
@@ -20,202 +35,194 @@ def upsert_sequences(campaign_id, sequences):
 A=[
 {
  'seq_number':1,
- 'subject':'Congrats on your {{state}} insurance license!',
- 'email_body':"""Hi {{first_name}},
+ 'subject':'agent to agent',
+ 'email_body':"""{{first_name}},
 
-I noticed you recently got your insurance license in {{state}} — congrats! That's a big step.
+You either know who I am or you don't. Either way, I'm reaching out to licensed agents one-on-one and wanted to ask you a real question before anything else.
 
-I've been in this industry for years and I remember how overwhelming those first few weeks can be. Everyone's telling you to join their agency, buy leads, and start dialing.
+What's the biggest thing breaking your business right now? Bad leads, weak training, captive contract, dial reluctance, something else?
 
-Here's what I wish someone told me on day one:
-
-The carrier you choose matters more than your work ethic. I've seen equally talented agents make $40K and $200K — the only difference was their commission structure and support system.
-
-I put together a quick guide on 'The 5 Things Every New Agent Needs to Know' — happy to send it your way if you're interested.
-
-Either way, welcome to the business. It's a great career if you set it up right.
+Tell me and I'll send back the best thing I can on it. No pitch, no booking link.
 
 David Price""",
  'seq_delay_details': {'delay_in_days':0}
 },
 {
  'seq_number':2,
- 'subject':'The carrier decision most new agents get wrong',
- 'email_body':"""Hi {{first_name}},
+ 'subject':'the $4,200/month opener',
+ 'email_body':"""{{first_name}},
 
-Following up on my last note. One thing I see new agents do all the time — they sign with the first carrier that recruits them without understanding what they're giving up.
+Quick story while I wait to hear back.
 
-Here's what to compare before you commit:
+We had an agent in our shop writing about $3k/month in AP. Solid effort, terrible numbers. On a ride-along I heard the problem in 30 seconds.
 
-• Commission level — anything below 80% on first-year premiums is leaving money on the table
-• Lead support — do THEY provide leads, or do YOU pay for them?
-• Training — not product training (every carrier does that) — sales training and mentorship
-• Contract terms — are you locked in? Can you move carriers freely?
-• Vesting — do you own your book of business on day one?
+Every call he opened with: "Hi, this is Mike with [carrier], I'm following up on the form you filled out about final expense coverage."
 
-Most captive agencies fail on 3 or more of these. Independent agencies built for agents typically nail all 5.
+Dead. Before he even started.
 
-Worth knowing before you sign anything.
+We changed it to: "Hey, is this Carol? Hey Carol, you sent in some info about getting some affordable life insurance to cover final expenses. Did I catch you at an okay time?"
 
-David Price""",
- 'seq_delay_details': {'delay_in_days':2}
-},
-{
- 'seq_number':3,
- 'subject':'How a new agent wrote $50K AP in their first year',
- 'email_body':"""Hi {{first_name}},
+Three things changed. He confirmed the prospect, framed it as affordable instead of a sales call, and gave them an out, which actually made them stay on.
 
-Quick story about an agent who started where you are right now.
+Next month he wrote $7,200 AP. Same leads, same hours, same agent. One opener.
 
-She got her license, had zero experience, and wasn't sure which direction to go. She almost signed with a well-known captive carrier because they were the first to call.
-
-Instead, she did her homework. She found an independent agency that:
-— Paid 100%+ first-year commissions
-— Provided 15+ warm leads per week at no cost
-— Assigned her a mentor who'd been in the business 20 years
-— Let her own her book from day one
-
-Her first year: $52,000 in annual premium. Her income: over $80,000.
-
-The agent at the captive carrier who got licensed the same week? She quit after 6 months. Not because she wasn't good — the math just didn't work at 40% commissions with $500/month in lead costs.
-
-Same talent. Different environment. Completely different outcome.
-
-If you want to know what to look for in your first agency, I'm happy to share what I've learned.
-
-David Price""",
- 'seq_delay_details': {'delay_in_days':5}
-},
-{
- 'seq_number':4,
- 'subject':'Free training this week for new life agents',
- 'email_body':"""Hi {{first_name}},
-
-I run a community of life insurance agents across the country. We do weekly trainings, share what's working, and help each other grow.
-
-This week's topic: 'Your First 90 Days — The Exact Playbook Top Producers Follow'
-
-It's free, no strings attached. We just believe that agents who are trained well sell more, and that's good for the whole industry.
-
-If you're interested, I can send you the details.
-
-David Price""",
- 'seq_delay_details': {'delay_in_days':7}
-},
-{
- 'seq_number':5,
- 'subject':'Still looking for the right fit?',
- 'email_body':"""Hi {{first_name}},
-
-I've sent you a few emails about getting started in insurance — hopefully some of it was helpful.
-
-I know you're probably getting pulled in a lot of directions right now. If you've already found a carrier you're happy with, that's great — ignore me and go crush it.
-
-But if you're still figuring things out, I'd be happy to jump on a quick 10-minute call. No pitch — just honest answers about the industry from someone who's been doing this a while.
-
-Either way, I wish you the best. This industry changes lives when you set it up right.
-
-David Price""",
- 'seq_delay_details': {'delay_in_days':10}
-}
-]
-
-B=[
-{
- 'seq_number':1,
- 'subject':'Quick question about your {{state}} book of business',
- 'email_body':"""Hi {{first_name}},
-
-I came across your information in the {{state}} insurance directory and had a quick question.
-
-How happy are you with your current commission structure?
-
-I ask because I talk to a lot of agents who are doing well but wonder if they could be doing better. Most don't realize how much the compensation landscape has changed in the last few years.
-
-No agenda here — I'm genuinely curious what agents in {{state}} are experiencing right now.
-
-David Price""",
- 'seq_delay_details': {'delay_in_days':0}
-},
-{
- 'seq_number':2,
- 'subject':'The commission gap most {{state}} agents do not know about',
- 'email_body':"""Hi {{first_name}},
-
-Did you know that commission rates for life insurance agents range from 30% to 140% — for the exact same products?
-
-That's not a typo. An agent selling a $100/month policy could earn $360/year or $1,680/year depending on their carrier and contract level.
-
-Multiply that by 100 policies and the difference is $132,000 per year. Same effort. Same clients. Same products.
-
-Most agents never see the other side because they don't know it exists.
-
-I've put together a simple commission comparison tool. Want me to send it over? It takes 2 minutes and shows you exactly where you stand.
+This is the kind of thing we break down every week inside the community I'm building. More on that in a couple days.
 
 David Price""",
  'seq_delay_details': {'delay_in_days':3}
 },
 {
  'seq_number':3,
- 'subject':'How agents in {{state}} are 3x-ing their income',
- 'email_body':"""Hi {{first_name}},
+ 'subject':"before insurance, i was repo'ing cars",
+ 'email_body':"""{{first_name}},
 
-I wasn't going to send another email, but I just got off the phone with an agent in {{state}} who made a change 8 months ago and I thought you might find his story interesting.
+Short story, then I'll get to why I'm telling you any of this.
 
-He was with a well-known carrier for 3 years. Good at sales. Working hard. Making about $65,000/year.
+Before I started The Price Group in 2018, I worked oil rigs and repossessed cars. Grew up in government housing. Didn't know one person in the insurance business. No license, no mentor, no clue.
 
-He switched to an independent model and kept doing the exact same thing he was already doing.
+First year as an agent I made $20k. I was broke and embarrassed.
 
-His income this year is on pace for $185,000.
+What changed wasn't talent. It was access. I finally got into a room of agents who were actually winning, started copying what they did, started getting answers same day instead of figuring it out alone for months.
 
-What changed:
-• Commission went from 55% to 110%
-• Stopped paying $400/month for leads — now gets them for free
-• Kept all his existing clients (portable book of business)
-• Got paired with a mentor who helped him close bigger cases
+Today we've done over $100 million in production. I write a column for Forbes on what's actually working in the industry, and I've shared stages with people like Jeremy Miner.
 
-He told me his only regret was not doing it sooner.
+I'm not telling you this to flex. I'm telling you because the thing that moved the needle wasn't a script or a lead source or a carrier contract. It was the room.
 
-If you're curious about what's out there, I'm happy to chat. No pressure, just information.
+That's why I'm building what I'm building. Tomorrow you'll get the link.
 
 David Price""",
  'seq_delay_details': {'delay_in_days':7}
 },
 {
  'seq_number':4,
- 'subject':'Free training for {{state}} life agents',
- 'email_body':"""Hi {{first_name}},
+ 'subject':'the link i promised {{first_name}}',
+ 'email_body':"""{{first_name}},
 
-I run a community of life insurance agents — we do trainings, share wins, and help each other grow.
+Here it is: https://www.skool.com/insurance/about
 
-This month's training: 'Advanced Closing Techniques That Actually Work in 2026'
+It's called We Are Insurance Agents. The free tier takes 30 seconds to join, and that's the only thing I'm asking you to do.
 
-It's free. You don't have to change carriers, join anything, or buy anything. Good training makes good agents, regardless of where you work.
+What you get on the free side:
 
-Want the details?
+Unbreakable: The Mindset Blueprint
+Weekly live calls with me every Monday at 3pm Eastern
+Access to our Leads Ready AI platform
+The community feed where producers writing FE, life, and Medicare swap what's actually working
+The wins thread, ask-me-anything threads, and the room itself
+
+If the room earns its keep, there are two paid tiers:
+Premium at $39/month adds the full Never Settle Academy (40+ video modules I used to sell as a $2,000 course, filmed at Cody Askins' studio) and the NEPQ-based scripts we run in the shop (Jeremy Miner / 7th Level).
+VIP at $197/month or $1,000/year adds direct DM access to me plus quarterly 1-on-1 strategy calls where we look at your business together and adjust course.
+
+But none of that matters yet. The free tier is more than most paid communities give you. Start there.
 
 David Price""",
- 'seq_delay_details': {'delay_in_days':10}
+ 'seq_delay_details': {'delay_in_days':11}
 },
 {
  'seq_number':5,
- 'subject':'Last note from me, {{first_name}}',
- 'email_body':"""Hi {{first_name}},
+ 'subject':"i'll stop emailing you {{first_name}}",
+ 'email_body':"""{{first_name}},
 
-I've reached out a few times and I don't want to be that person who won't take a hint.
+Last one from me. Promise.
 
-If you're happy where you are, I respect that 100%. Keep grinding and building your book.
+I'm not going to keep showing up in your inbox if it's not your moment. They're loud enough already.
 
-But if any of what I shared made you curious — even a little — I'm here whenever you're ready. No expiration date on the offer to chat.
+If you ever want in, the free tier is here: https://www.skool.com/insurance/about
 
-Either way, I wish you nothing but success.
+If not, I hope you write a record year. Genuinely.
 
 David Price
 
-P.S. If you ever want to compare your current comp to what's available, my door is always open. Sometimes a 15-minute conversation can change the trajectory of your career.""",
- 'seq_delay_details': {'delay_in_days':14}
+PS. One thing before I go. The agents I've watched break through usually did it after they stopped trying to figure it out alone. Whenever that moment hits for you, I'll be around.""",
+ 'seq_delay_details': {'delay_in_days':16}
 }
 ]
 
+B=[
+{
+ 'seq_number':1,
+ 'subject':'weird question',
+ 'email_body':"""{{first_name}},
+
+If you had to bet money on which one fixes your business faster, more leads or better closing, which one are you putting the chips on?
+
+David Price""",
+ 'seq_delay_details': {'delay_in_days':0}
+},
+{
+ 'seq_number':2,
+ 'subject':'i was wrong about this for years',
+ 'email_body':"""{{first_name}},
+
+Spent the first three years of my career thinking the answer to every problem was more leads.
+
+Wasn't.
+
+Watched an agent in our shop close 38% on the same leads another agent was closing 11% on. Same script, same offer, same carrier. The difference was something I'm still trying to put into words.
+
+I'll send you the closest thing I've got to an explanation in a few days.
+
+David Price""",
+ 'seq_delay_details': {'delay_in_days':3}
+},
+{
+ 'seq_number':3,
+ 'subject':'the 38% guy',
+ 'email_body':"""{{first_name}},
+
+Following up on the 38% closer I mentioned.
+
+Took me a while to figure out what he was doing differently. It wasn't the script. It wasn't tone. It wasn't pace.
+
+It was that he genuinely didn't care if the prospect bought.
+
+Not in a "fake confidence" way. He actually didn't care. He'd made enough money that any one sale didn't matter, so he treated every call like he was helping a stranger figure out a problem. Prospects could feel it. They bought from him because he wasn't trying to sell them.
+
+The hard part is, you can't fake that. You either have enough volume and enough belief in your product that you don't need any one prospect, or you don't. And if you don't, every call is going to leak the desperation no matter what script you use.
+
+The fix isn't a better opener. The fix is enough lead flow and enough peer support that you stop needing the next sale to survive.
+
+That's what I've been building toward for the last six years.
+
+David Price""",
+ 'seq_delay_details': {'delay_in_days':7}
+},
+{
+ 'seq_number':4,
+ 'subject':'ok, here',
+ 'email_body':"""{{first_name}},
+
+You've gotten three emails from me without an ask. Time to make one.
+
+I'm building a community for insurance agents. It's called We Are Insurance Agents. Free tier, 30 seconds to join, link below.
+
+What's in the free tier:
+
+Unbreakable: The Mindset Blueprint
+Weekly live calls with me every Monday at 3pm Eastern
+Access to our Leads Ready AI platform
+The community itself
+
+Premium ($39/month) adds the full Never Settle Academy and the NEPQ scripts we use. VIP ($197/month or $1,000/year) adds direct DM access to me plus quarterly 1-on-1 strategy calls. But the free tier is more than most agents need to start with.
+
+https://www.skool.com/insurance/about
+
+David Price""",
+ 'seq_delay_details': {'delay_in_days':11}
+},
+{
+ 'seq_number':5,
+ 'subject':'closing the loop',
+ 'email_body':"""{{first_name}},
+
+This is the last one. If the timing's not right, no problem. Free tier is here whenever: https://www.skool.com/insurance/about
+
+David Price""",
+ 'seq_delay_details': {'delay_in_days':16}
+}
+]
+
+require_ready_senders()
 upsert_sequences(3232436,A)
 upsert_sequences(3232437,B)
