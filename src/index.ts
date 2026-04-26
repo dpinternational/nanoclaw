@@ -673,7 +673,10 @@ async function main(): Promise<void> {
       queue.registerProcess(groupJid, proc, containerName, groupFolder),
     sendMessage: async (jid, rawText) => {
       if (_shouldSuppressOutboundForGroup(jid)) {
-        logger.info({ jid }, 'Outbound scheduled-task message suppressed by group silence mode');
+        logger.info(
+          { jid },
+          'Outbound scheduled-task message suppressed by group silence mode',
+        );
         return;
       }
       const channel = findChannel(channels, jid);
@@ -688,7 +691,10 @@ async function main(): Promise<void> {
   startIpcWatcher({
     sendMessage: (jid, text) => {
       if (_shouldSuppressOutboundForGroup(jid)) {
-        logger.info({ jid }, 'Outbound IPC message suppressed by group silence mode');
+        logger.info(
+          { jid },
+          'Outbound IPC message suppressed by group silence mode',
+        );
         return Promise.resolve();
       }
       const channel = findChannel(channels, jid);

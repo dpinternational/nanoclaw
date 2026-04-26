@@ -70,11 +70,13 @@ export function startIpcWatcher(deps: IpcDeps): void {
       const messagesDir = path.join(ipcBaseDir, sourceGroup, 'messages');
       const tasksDir = path.join(ipcBaseDir, sourceGroup, 'tasks');
 
-     // Process messages from this group's IPC directory
-     try {
+      // Process messages from this group's IPC directory
+      try {
         let messageFiles: string[] = [];
         try {
-          messageFiles = (await fsp.readdir(messagesDir)).filter((f) => f.endsWith('.json'));
+          messageFiles = (await fsp.readdir(messagesDir)).filter((f) =>
+            f.endsWith('.json'),
+          );
         } catch {
           // directory doesn't exist — no messages
         }
@@ -129,7 +131,9 @@ export function startIpcWatcher(deps: IpcDeps): void {
       try {
         let draftFiles: string[] = [];
         try {
-          draftFiles = (await fsp.readdir(emailDraftsDir)).filter((f) => f.endsWith('.json'));
+          draftFiles = (await fsp.readdir(emailDraftsDir)).filter((f) =>
+            f.endsWith('.json'),
+          );
         } catch {
           // directory doesn't exist — no drafts
         }
@@ -186,7 +190,9 @@ export function startIpcWatcher(deps: IpcDeps): void {
       try {
         let taskFiles: string[] = [];
         try {
-          taskFiles = (await fsp.readdir(tasksDir)).filter((f) => f.endsWith('.json'));
+          taskFiles = (await fsp.readdir(tasksDir)).filter((f) =>
+            f.endsWith('.json'),
+          );
         } catch {
           // directory doesn't exist — no tasks
         }

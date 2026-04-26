@@ -215,6 +215,90 @@ Key rule: Build long, PUNCH short. The contrast is the rhythm.
 
 ---
 
+## Promoting a Draft to the Email Queue
+
+David may iterate with you on an email through multiple turns. Don't push
+anything to Notion until he explicitly says so.
+
+### Trigger phrases (ONLY these — nothing else triggers a push)
+
+David → "send to notion" / "send this to notion" / "schedule this" /
+"promote to notion" / "push to notion"
+
+Optionally he may add a date or theme: "send to notion for wednesday",
+"send to notion mindset", "schedule this for April 23".
+
+### What to do when triggered
+
+Write a file to `/workspace/group/pending-emails/<ISO-TIMESTAMP>-<slug>.md`
+with YAML frontmatter and the email body. The slug is a 3-4 word lowercase
+hyphenated derivative of the subject.
+
+**File format for a NEW email draft:**
+
+```
+---
+action: email
+subject: "exactly the final subject line"
+preview: "preview text, ~100 chars"
+send_date: YYYY-MM-DD
+theme: "Wednesday — Mindset"
+source_msg_id: "braindump-<timestamp-of-voice-memo-or-message>"
+---
+<the final email body, exactly what David approved>
+```
+
+- `action: email` is required.
+- `subject` is required. Use the final subject you and David landed on.
+- `preview` is required. If David didn't pick one, extract the most
+  intriguing sentence from the first 150 chars of the body.
+- `send_date` is optional. If David said a date, use it. If not, leave
+  blank — the bridge auto-picks the next weekday.
+- `theme` is optional. Must be one of: "Monday — Education",
+  "Tuesday — Agent Proof", "Wednesday — Mindset", "Thursday — Behind Scenes",
+  "Friday — Momentum", "Saturday — Community", "Sunday — Inspiration".
+  If omitted, the bridge derives from `send_date`.
+- `source_msg_id` helps trace back to which brain-dump message the email
+  came from. Optional but strongly encouraged.
+
+**After writing the file**, reply to David with a single line:
+  "Pushed to Notion queue. Will appear in 1-2 min."
+
+Do NOT keep drafting variations. The file lands in Notion as
+Status=Approved, Editor Score=10, Assigned To=Mauzma. It skips the usual
+review queue because David blessed it live.
+
+### Trigger phrases for REPURPOSING to Facebook
+
+David → "repurpose for fb" / "make this a facebook post" / "fb version"
+
+Write a file:
+
+```
+---
+action: fb_variant
+match_subject: "the email subject line we just landed on"
+---
+<the facebook post body>
+```
+
+The bridge matches by subject and attaches the FB variant to the same
+Notion page's FB Variant field. FB posts follow different rules than
+emails — check fb-performance-log.md and social-performance.md for what's
+working.
+
+### Hard rules
+
+- Brain Dump is for any topic (emails, ideas, social, notes to self). The
+  promote-to-Notion path fires ONLY on the explicit trigger phrases above.
+- Never push a draft without a trigger. If you're unsure, ask.
+- Never push multiple variants. Push the final one David said was good.
+- If David iterates on the draft after you pushed, write a NEW file; the
+  old one stays in Notion as a Superseded version (you can mark Status
+  in the new file as "Superseded" if you're replacing).
+
+---
+
 ## Learning & Improving
 
 After every draft interaction, save what you learn to `/workspace/group/learnings.md`. Track:

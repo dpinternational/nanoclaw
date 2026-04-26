@@ -1,16 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('fs', () => ({
+  default: {
+    existsSync: vi.fn(() => true),
+  },
+}));
+
 // Mock heavy deps that sales-celebration imports
+const dbRunMock = vi.fn();
 vi.mock('better-sqlite3', () => {
   return {
-    default: vi.fn(() => {
-      throw new Error('No DB in test');
-    }),
+    default: vi.fn(() => ({
+      pragma: vi.fn(),
+      exec: vi.fn(),
+      prepare: vi.fn(() => ({ run: dbRunMock })),
+    })),
   };
 });
 
 vi.mock('./config.js', () => ({
   DATA_DIR: '/tmp/test-nanoclaw-data',
+}));
+
+const { getRegisteredGroupMock } = vi.hoisted(() => ({
+  getRegisteredGroupMock: vi.fn(),
+}));
+vi.mock('./db.js', () => ({
+  getRegisteredGroup: getRegisteredGroupMock,
 }));
 
 vi.mock('./logger.js', () => {
@@ -57,6 +73,9 @@ const TPG_JID = 'tg:-1002362081030';
 describe('checkAndCelebrateSale', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    dbRunMock.mockReset();
+    getRegisteredGroupMock.mockReset();
+    getRegisteredGroupMock.mockReturnValue(undefined);
   });
 
   afterEach(() => {
@@ -67,6 +86,23 @@ describe('checkAndCelebrateSale', () => {
     const ch = makeTgChannel();
     const msg = makeMsg({ content: 'Trans $50.00 approved 🔥' });
     checkAndCelebrateSale(msg, 'wrong-jid', [ch]);
+    vi.advanceTimersByTime(20000);
+    expect(ch.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('suppresses celebrations when the group is in observation mode but still does not send a message', () => {
+    getRegisteredGroupMock.mockReturnValue({
+      jid: TPG_JID,
+      name: 'TPG UnCaged',
+      folder: 'telegram_tpg_uncaged',
+      trigger: '^OBSERVATION_MODE_DO_NOT_RESPOND_UNTIL_APRIL_19$',
+      added_at: new Date().toISOString(),
+      requiresTrigger: true,
+    });
+
+    const ch = makeTgChannel();
+    const msg = makeMsg({ content: 'Trans $92.34/mo approved 🔥' });
+    checkAndCelebrateSale(msg, TPG_JID, [ch]);
     vi.advanceTimersByTime(20000);
     expect(ch.sendMessage).not.toHaveBeenCalled();
   });

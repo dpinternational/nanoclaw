@@ -731,7 +731,10 @@ export class TelegramChannel implements Channel {
     // a symptom into a destructive state change. See Apr 17-18 2026 RCA.
     // Webhooks are gone; polling is the only mode. If this is ever called,
     // it's a logic error somewhere — log and return.
-    logger.warn({ reason }, 'fallbackToPolling() invoked but disabled (polling-only mode)');
+    logger.warn(
+      { reason },
+      'fallbackToPolling() invoked but disabled (polling-only mode)',
+    );
     return;
 
     // eslint-disable-next-line no-unreachable

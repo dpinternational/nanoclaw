@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { DATA_DIR } from './config.js';
+import { getRegisteredGroup } from './db.js';
 import { logger } from './logger.js';
 import { Channel, NewMessage } from './types.js';
 
@@ -292,6 +293,14 @@ const recentlyCelebrated = new Set<string>();
  * Determine if a message contains sale posts and return ALL of them.
  * A single message can contain multiple sales (e.g. two policies posted together).
  */
+function shouldSuppressCelebration(chatJid: string): boolean {
+  const group = getRegisteredGroup(chatJid);
+  if (!group) return false;
+
+  const trigger = group.trigger || '';
+  return /OBSERVATION_MODE|DO_NOT_RESPOND|IMPOSSIBLE_MATCH/i.test(trigger);
+}
+
 function detectSales(msg: NewMessage): { name: string; amount: string }[] {
   const content = msg.content;
 
@@ -372,6 +381,14 @@ export function checkAndCelebrateSale(
 
   const sales = detectSales(msg);
   if (sales.length === 0) return;
+
+  if (shouldSuppressCelebration(chatJid)) {
+    logger.info(
+      { chatJid, salesCount: sales.length },
+      'Sales celebration suppressed by group silence mode after recording sale',
+    );
+    return;
+  }
 
   // Deduplicate
   if (recentlyCelebrated.has(msg.id)) return;

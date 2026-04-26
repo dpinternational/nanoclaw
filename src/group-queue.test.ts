@@ -10,7 +10,8 @@ vi.mock('./config.js', () => ({
 
 // Mock fs operations used by sendMessage/closeStdin
 vi.mock('fs/promises', async () => {
-  const actual = await vi.importActual<typeof import('fs/promises')>('fs/promises');
+  const actual =
+    await vi.importActual<typeof import('fs/promises')>('fs/promises');
   return {
     ...actual,
     default: {

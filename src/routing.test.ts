@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { _initTestDatabase, getAllChats, storeChatMetadata } from './db.js';
-import { getAvailableGroups, _setRegisteredGroups } from './index.js';
+import {
+  getAvailableGroups,
+  _setRegisteredGroups,
+  _shouldSuppressOutboundForGroup,
+} from './index.js';
 
 beforeEach(() => {
   _initTestDatabase();
@@ -21,6 +25,40 @@ describe('JID ownership patterns', () => {
   it('WhatsApp DM JID: ends with @s.whatsapp.net', () => {
     const jid = '12345678@s.whatsapp.net';
     expect(jid.endsWith('@s.whatsapp.net')).toBe(true);
+  });
+});
+
+describe('_shouldSuppressOutboundForGroup', () => {
+  it('suppresses TPG UnCaged when observation-mode trigger is active', () => {
+    _setRegisteredGroups({
+      'tg:-1002362081030': {
+        name: 'TPG UnCaged',
+        folder: 'telegram_tpg_uncaged',
+        trigger: '^OBSERVATION_MODE_DO_NOT_RESPOND_UNTIL_APRIL_19$',
+        added_at: '2024-01-01T00:00:00.000Z',
+      },
+    });
+
+    expect(_shouldSuppressOutboundForGroup('tg:-1002362081030')).toBe(true);
+  });
+
+  it('does not suppress other groups', () => {
+    _setRegisteredGroups({
+      'tg:-1002362081030': {
+        name: 'TPG UnCaged',
+        folder: 'telegram_tpg_uncaged',
+        trigger: '^OBSERVATION_MODE_DO_NOT_RESPOND_UNTIL_APRIL_19$',
+        added_at: '2024-01-01T00:00:00.000Z',
+      },
+      'tg:123': {
+        name: 'Other',
+        folder: 'other_group',
+        trigger: '^OBSERVATION_MODE_DO_NOT_RESPOND$',
+        added_at: '2024-01-01T00:00:00.000Z',
+      },
+    });
+
+    expect(_shouldSuppressOutboundForGroup('tg:123')).toBe(false);
   });
 });
 
