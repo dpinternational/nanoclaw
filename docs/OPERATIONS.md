@@ -20,6 +20,27 @@ recomputes. The other two ltv-*.py scripts (ltv-complete.py,
 ltv-deep-analysis.py) are ad-hoc analyses against pre-dumped JSON and are
 not part of the weekly schedule.
 
+## TPG Reports — what runs when
+
+Two scripts look superficially similar but are intentionally differentiated.
+Do NOT retire either without confirming with David first.
+
+| Script                              | Cron (UTC) | Local time      | Bot token              | Format       | Source / data       | Destination          |
+|-------------------------------------|------------|-----------------|------------------------|--------------|---------------------|----------------------|
+| scripts/tpg-uncaged-morning-report.py | 02:45     | 02:45 AST       | TPG_REPORT_BOT_TOKEN ("Andy" bot) | Short exec summary: top-5 agents, AP total, standouts, "quiet" agents | tpg-daily-digest-hermes parser + store/messages.db | Telegram DM to David (577469008) |
+| scripts/tpg-daily-digest-server.py    | 07:00     | 03:00 ET        | TELEGRAM_BOT_TOKEN (main NanoClaw bot) | Long-form full digest of yesterday's production with prior-week-avg comparison | Same parser + same messages.db | Telegram DM to David (577469008) |
+
+Why both exist:
+  - Different bots so David can mute one independently in Telegram.
+  - Different timezones: AST report fires before ET wake-up (early signal),
+    ET report fires after the books close for the prior US day (final number).
+  - Different formats: short headline vs. full breakdown.
+  - Same underlying data source (no risk of divergence).
+
+Status (2026-04-26): NOT a duplicate. No action recommended. If David later
+wants to consolidate, the AST/short version is the easier one to retire since
+the 07 UTC ET digest contains a strict superset of the data.
+
 ## Where things run
 
 There are two production hosts:
