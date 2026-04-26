@@ -78,3 +78,12 @@ __pycache__/
 insurance-scraper/.env.worker*
 !insurance-scraper/.env.worker.example
 
+
+# Insurance-scraper runtime data (Phase 3 batch 2)
+/insurance-scraper/out/
+/insurance-scraper/state/
+/insurance-scraper/snapshots/
+/insurance-scraper/logs/
+/insurance-scraper/__pycache__/
+/insurance-scraper/scripts/__pycache__/
+/insurance-scraper/.env
