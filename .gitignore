@@ -51,3 +51,7 @@ agents-sdk-docs
 .notion-token
 __pycache__/
 *.pyc
+
+# Python virtualenvs (added 2026-04-26 cleanup)
+.venv/
+*/.venv/
