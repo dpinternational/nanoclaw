@@ -14,7 +14,9 @@ set -euo pipefail
 
 LOCAL_ROOT="/Users/davidprice/nanoclaw"
 REMOTE_HOST="root@89.167.109.12"
-REMOTE_ROOT="/home/david/nanoclaw"
+REMOTE_ROOT_DEFAULT="/home/david/nanoclaw"
+# insurance-scraper is deployed at the SIBLING path on the server, not under nanoclaw/
+REMOTE_ROOT_INSURANCE="/home/david/insurance-scraper"
 LOG_DIR="$LOCAL_ROOT/logs"
 LOG_FILE="$LOG_DIR/deploy.log"
 
@@ -31,8 +33,22 @@ done
 
 mkdir -p "$LOG_DIR"
 
+# Choose remote root + remap subdir if it starts with insurance-scraper
+if [[ "$SUBDIR" == insurance-scraper* ]]; then
+  REMOTE_ROOT="$REMOTE_ROOT_INSURANCE"
+  REMOTE_SUBDIR="${SUBDIR#insurance-scraper}"
+  REMOTE_SUBDIR="${REMOTE_SUBDIR#/}"
+else
+  REMOTE_ROOT="$REMOTE_ROOT_DEFAULT"
+  REMOTE_SUBDIR="$SUBDIR"
+fi
+
 LOCAL_PATH="$LOCAL_ROOT/$SUBDIR/"
-REMOTE_PATH="$REMOTE_ROOT/$SUBDIR/"
+if [[ -n "$REMOTE_SUBDIR" ]]; then
+  REMOTE_PATH="$REMOTE_ROOT/$REMOTE_SUBDIR/"
+else
+  REMOTE_PATH="$REMOTE_ROOT/"
+fi
 
 if [[ ! -d "$LOCAL_PATH" ]]; then
   echo "ERROR: local path does not exist: $LOCAL_PATH" >&2
