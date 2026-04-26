@@ -4,6 +4,22 @@ This document describes where things run and how the system is wired together.
 See also: docs/plans/2026-04-26-git-state-cleanup-plan.md for the cleanup plan
 that established the conventions below.
 
+## Weekly LTV refresh
+
+scripts/agent-ltv-model.py is the canonical Agent Lifetime Value runner.
+It pulls Recruiting Report + Money Report from Google Sheets, joins
+production from store/tpg-intel.db, and rebuilds the agent_ltv,
+ltv_by_source, and ltv_by_manager tables.
+
+Cron (user david, server):
+    0 10 * * 1 cd /home/david/nanoclaw && TZ=UTC NODE_PATH=/home/david/nanoclaw/node_modules python3 scripts/agent-ltv-model.py >> /home/david/nanoclaw/logs/ltv-weekly.log 2>&1
+
+Schedule rationale: Monday 10:00 UTC is one hour after gina-production-sync
+(Mon 09 UTC), so the production db has the latest weekly numbers before LTV
+recomputes. The other two ltv-*.py scripts (ltv-complete.py,
+ltv-deep-analysis.py) are ad-hoc analyses against pre-dumped JSON and are
+not part of the weekly schedule.
+
 ## Where things run
 
 There are two production hosts:
