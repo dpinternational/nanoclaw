@@ -34,6 +34,10 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
 PROXY_URL = os.getenv("PROXY_URL", "")  # e.g. socks5://user:pass@host:port
 INTER_STATE_SLEEP = int(os.getenv("INTER_STATE_SLEEP", "3600"))  # 1 hour between states
+WORKER_ID = os.getenv("WORKER_ID") or f"worker-{os.uname().nodename}"
+RUNNING_STALE_MINUTES = int(os.getenv("RUNNING_STALE_MINUTES", "120"))
+CLAIM_RETRY_SLEEP = float(os.getenv("CLAIM_RETRY_SLEEP", "2"))
+ENABLE_MONTHLY_RESET = os.getenv("ENABLE_MONTHLY_RESET", "false").lower() == "true"
 MAX_PREFIX_RETRIES = 3
 MIN_SEARCH_DELAY = 2.0
 MAX_SEARCH_DELAY = 5.0
@@ -125,42 +129,71 @@ class StateQueue:
         logger.info(f"State queue initialized ({len(SBS_STATES)} states)")
 
     @staticmethod
-    def get_current_state():
-        """Get the state we should be working on.
-        Priority: 'running' first (resume interrupted), then 'pending' alphabetically."""
+    def recycle_stale_running(stale_minutes: int):
+        """Return stale running states back to pending so another worker can claim them."""
+        cutoff = datetime.now().timestamp() - (stale_minutes * 60)
+        cutoff_iso = datetime.fromtimestamp(cutoff).isoformat()
+        try:
+            recycled = supabase.table("scrape_runs").update({
+                'status': 'pending',
+                'updated_at': datetime.now().isoformat(),
+            }).eq("status", "running").lt("updated_at", cutoff_iso).execute()
+            if recycled.data:
+                states = [r.get('state') for r in recycled.data]
+                logger.warning(f"Recycled stale running states ({len(states)}): {states}")
+        except Exception as e:
+            logger.warning(f"Could not recycle stale running states: {e}")
 
-        # Check for interrupted state first
-        result = supabase.table("scrape_runs") \
-            .select("*") \
-            .eq("status", "running") \
-            .limit(1) \
-            .execute()
+    @staticmethod
+    def queue_counts():
+        """Return counts of pending/running/completed states."""
+        counts = {'pending': 0, 'running': 0, 'completed': 0}
+        for status in counts.keys():
+            try:
+                result = supabase.table("scrape_runs").select("id").eq("status", status).execute()
+                counts[status] = len(result.data or [])
+            except Exception:
+                pass
+        return counts
 
-        if result.data:
-            state = result.data[0]
-            logger.info(f"Resuming interrupted state: {state['state']} from prefix '{state['last_prefix']}'")
-            return state
+    @staticmethod
+    def claim_next_state(worker_id: str):
+        """Atomically claim one pending state for this worker.
 
-        # Get next pending state
-        result = supabase.table("scrape_runs") \
-            .select("*") \
-            .eq("status", "pending") \
-            .order("state") \
-            .limit(1) \
-            .execute()
+        Multiple workers can call this safely. Only one worker can flip a row
+        from pending->running because the update is conditional on current status.
+        """
+        StateQueue.recycle_stale_running(RUNNING_STALE_MINUTES)
 
-        if result.data:
-            state = result.data[0]
-            logger.info(f"Starting new state: {state['state']}")
-            supabase.table("scrape_runs").update({
+        while True:
+            pending = supabase.table("scrape_runs") \
+                .select("*") \
+                .eq("status", "pending") \
+                .order("state") \
+                .limit(1) \
+                .execute()
+
+            if not pending.data:
+                return None
+
+            candidate = pending.data[0]
+            now_iso = datetime.now().isoformat()
+
+            claim = supabase.table("scrape_runs").update({
                 'status': 'running',
-                'started_at': datetime.now().isoformat(),
-                'updated_at': datetime.now().isoformat()
-            }).eq("id", state['id']).execute()
-            return state
+                'started_at': candidate.get('started_at') or now_iso,
+                'updated_at': now_iso,
+            }).eq("id", candidate['id']).eq("status", "pending").execute()
 
-        return None
+            if claim.data:
+                logger.info(
+                    f"Worker {worker_id} claimed state: {candidate['state']} "
+                    f"from prefix '{candidate.get('last_prefix') or 'A'}'"
+                )
+                return claim.data[0]
 
+            # Lost race to another worker; retry quickly.
+            time.sleep(CLAIM_RETRY_SLEEP + random.uniform(0.1, 0.9))
     @staticmethod
     def update_progress(state_id, prefix, stats):
         """Update progress after each prefix"""
@@ -292,18 +325,22 @@ class InsuranceAgentScraper:
             options.add_argument(f'--proxy-server={proxy_no_auth}')
             logger.info(f"Using proxy: {proxy_no_auth}")
 
-        # Get chromedriver via webdriver-manager
-        try:
-            from webdriver_manager.chrome import ChromeDriverManager
-            chromedriver_path = ChromeDriverManager().install()
-            logger.info("Using ChromeDriver from webdriver-manager")
-        except Exception:
-            chromedriver_path = None
-            for path in ['/usr/bin/chromedriver', '/usr/local/bin/chromedriver']:
-                if os.path.exists(path):
-                    chromedriver_path = path
-                    logger.info(f"Using ChromeDriver at: {path}")
-                    break
+        # Prefer OS-packaged chromedriver (matches installed chromium, correct CPU arch)
+        chromedriver_path = None
+        for path in ['/usr/bin/chromedriver', '/usr/local/bin/chromedriver']:
+            if os.path.exists(path):
+                chromedriver_path = path
+                logger.info(f"Using system ChromeDriver at: {path}")
+                break
+
+        # Fallback to webdriver-manager only if system driver is unavailable
+        if not chromedriver_path:
+            try:
+                from webdriver_manager.chrome import ChromeDriverManager
+                chromedriver_path = ChromeDriverManager().install()
+                logger.info("Using ChromeDriver from webdriver-manager")
+            except Exception as e:
+                logger.warning(f"webdriver-manager unavailable: {e}")
 
         service = Service(chromedriver_path) if chromedriver_path else None
         if service:
@@ -929,7 +966,6 @@ class InsuranceAgentScraper:
                 'appointments_count': appointments_count,
                 'is_new_licensee': is_new_licensee,
                 'pipeline_stage': 'scraped',
-                'email_status': 'pending',
                 'score': score,
                 'opted_out': False,
                 'scraped_at': datetime.now().isoformat()
@@ -938,17 +974,27 @@ class InsuranceAgentScraper:
             # Upsert: check by NPN first, then by name+state as fallback
             existing = None
             if npn:
-                existing = supabase.table("agents").select("id, first_scraped_at").eq("npn", npn).execute()
+                existing = supabase.table("agents").select("id, first_scraped_at, email, email_status").eq("npn", npn).execute()
             if not existing or not existing.data:
                 # Fallback: match by name + state
-                existing = supabase.table("agents").select("id, first_scraped_at") \
+                existing = supabase.table("agents").select("id, first_scraped_at, email, email_status") \
                     .eq("name", name).eq("state", self.state).execute()
 
             if existing and existing.data:
-                agent_id = existing.data[0]['id']
+                existing_row = existing.data[0]
+                agent_id = existing_row['id']
+
+                old_email = (existing_row.get('email') or '').strip().lower()
+                new_email = (details.get('email') or '').strip().lower()
+
+                # Preserve existing verification unless email changed or status is missing.
+                if new_email and (new_email != old_email or not existing_row.get('email_status')):
+                    agent_data['email_status'] = 'pending'
+
                 result = supabase.table("agents").update(agent_data).eq("id", agent_id).execute()
             else:
                 agent_data['first_scraped_at'] = datetime.now().isoformat()
+                agent_data['email_status'] = 'pending' if (details.get('email') or '').strip() else None
                 result = supabase.table("agents").insert(agent_data).execute()
                 agent_id = result.data[0]['id'] if result.data else None
 
@@ -1157,11 +1203,14 @@ class InsuranceAgentScraper:
 def main():
     logger.info("=" * 60)
     logger.info("  INSURANCE AGENT SCRAPER v2 — Autonomous Pipeline")
+    logger.info(f"  Worker ID: {WORKER_ID}")
     logger.info(f"  NAIC SOLAR: {NAIC_SOLAR_URL}")
     logger.info(f"  States: {len(SBS_STATES)}")
     logger.info(f"  Prefixes per state: {TOTAL_PREFIXES:,}")
     logger.info(f"  Headless: {HEADLESS}")
     logger.info(f"  Proxy: {'Yes' if PROXY_URL else 'No'}")
+    logger.info(f"  Running stale threshold: {RUNNING_STALE_MINUTES}m")
+    logger.info(f"  Monthly reset enabled: {ENABLE_MONTHLY_RESET}")
     logger.info(f"  Inter-state sleep: {INTER_STATE_SLEEP}s")
     logger.info("=" * 60)
 
@@ -1171,26 +1220,39 @@ def main():
     states_completed = 0
 
     while True:
-        state_run = StateQueue.get_current_state()
+        state_run = StateQueue.claim_next_state(WORKER_ID)
 
         if not state_run:
-            logger.info("All states completed! Sleeping 24 hours before re-check...")
-            time.sleep(86400)
+            counts = StateQueue.queue_counts()
+            logger.info(
+                f"No pending states to claim. "
+                f"pending={counts.get('pending', 0)} running={counts.get('running', 0)} completed={counts.get('completed', 0)}"
+            )
 
-            # Reset completed states to pending for monthly re-scrape
-            logger.info("Resetting completed states for monthly re-scrape...")
-            supabase.table("scrape_runs").update({
-                'status': 'pending',
-                'last_prefix': 'A',
-                'prefixes_completed': 0,
-                'total_found': 0,
-                'qualified': 0,
-                'saved': 0,
-                'errors': 0,
-                'started_at': None,
-                'completed_at': None,
-                'updated_at': datetime.now().isoformat()
-            }).eq("status", "completed").execute()
+            # Other workers are likely still active.
+            if counts.get('running', 0) > 0:
+                time.sleep(300)
+                continue
+
+            # Nothing running + nothing pending.
+            if ENABLE_MONTHLY_RESET:
+                logger.info("Resetting completed states for monthly re-scrape...")
+                supabase.table("scrape_runs").update({
+                    'status': 'pending',
+                    'last_prefix': 'A',
+                    'prefixes_completed': 0,
+                    'total_found': 0,
+                    'qualified': 0,
+                    'saved': 0,
+                    'errors': 0,
+                    'started_at': None,
+                    'completed_at': None,
+                    'updated_at': datetime.now().isoformat()
+                }).eq("status", "completed").execute()
+                time.sleep(60)
+            else:
+                logger.info("All work complete. Sleeping 1 hour (monthly reset disabled).")
+                time.sleep(3600)
             continue
 
         state_name = state_run['state']

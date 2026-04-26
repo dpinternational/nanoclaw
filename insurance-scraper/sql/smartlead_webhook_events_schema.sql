@@ -23,16 +23,29 @@ ALTER TABLE smartlead_webhook_events ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  -- Remove legacy permissive policy if present
+  IF EXISTS (
     SELECT 1
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'smartlead_webhook_events'
       AND policyname = 'Allow all for anon'
   ) THEN
-    CREATE POLICY "Allow all for anon"
+    DROP POLICY "Allow all for anon" ON smartlead_webhook_events;
+  END IF;
+
+  -- Service role only for ingestion/maintenance
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'smartlead_webhook_events'
+      AND policyname = 'service_role_all_webhook_events'
+  ) THEN
+    CREATE POLICY "service_role_all_webhook_events"
       ON smartlead_webhook_events
       FOR ALL
+      TO service_role
       USING (true)
       WITH CHECK (true);
   END IF;
