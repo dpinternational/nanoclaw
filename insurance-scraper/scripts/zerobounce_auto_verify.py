@@ -63,9 +63,12 @@ def get_credits(cfg: dict) -> int:
 def fetch_pending_agents(cfg: dict, limit: int) -> list[dict]:
     url = f"{cfg['SUPABASE_URL']}/rest/v1/agents"
     params = {
-        "select": "id,email,is_new_licensee,appointments_count,state,first_scraped_at",
+        "select": "id,email,is_new_licensee,appointments_count,state,first_scraped_at,email_quality_status",
         "email": "not.is.null",
         "email_status": "eq.pending",
+        # Skip emails the audit has flagged as shared by >=3 agents.
+        # Accept rows that are unique OR not yet audited (NULL).
+        "or": "(email_quality_status.is.null,email_quality_status.eq.unique)",
         "order": "first_scraped_at.asc",
         "limit": str(limit),
     }
