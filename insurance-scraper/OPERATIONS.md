@@ -164,3 +164,52 @@ To enable execute mode after review, replace `--dry-run` with `--execute` on the
 - 10,683 verified (`email_status='verified'`)
 - 7,210 verified + is_new_licensee=true (Seq A pool)
 - 411 verified + appointments_count=1 (Seq B pool)
+
+## Email Quality Audit (pre-ZeroBounce dedup)
+
+Script: `scripts/agents_email_quality_audit.py`
+SQL: `sql/agent_email_quality_columns.sql`
+Cron: `*/15 * * * *` on server (user `david`).
+Log: `logs/email_quality_audit.log` (JSONL).
+
+### Purpose
+Mark agents whose email is shared by **3 or more** rows on the
+`agents` table BEFORE ZeroBounce verification runs, so duplicate
+emails never burn ZB credits and never reach the Smartlead loader.
+
+Threshold rationale: 2-share emails are typically spouse/family
+business and remain valid; 3+ are almost always corporate/shared
+inboxes (worst-case observed: licensingusaa@usaa.com on 58 agents).
+
+Corporate-pattern detection (info@, licensing@) and name-vs-email
+match still live in `smartlead_lead_loader.py::passes_quality_filter`.
+This audit only handles the dup-share dimension.
+
+### Pipeline sequence
+1. Scraper writes new agent rows (email_status=pending, email_quality_status=NULL).
+2. Audit cron (every 15 min) marks NULL rows as `unique` or `duplicate_shared`.
+3. ZB cron (every 30 min) skips `duplicate_shared` rows (only verifies
+   `email_quality_status` IS NULL OR `unique`).
+4. Smartlead loader skips `duplicate_shared` rows server-side via
+   PostgREST filter; Python-side `passes_quality_filter` is the safety net.
+
+### Manual commands
+```
+# Stats only (no writes)
+python3 scripts/agents_email_quality_audit.py --report
+
+# Initial backfill (run once after schema applied)
+python3 scripts/agents_email_quality_audit.py --full-sweep --execute --i-mean-it
+
+# Re-sweep everything after a policy change
+python3 scripts/agents_email_quality_audit.py --full-sweep --dry-run
+```
+
+### Schema
+Three columns on `agents`:
+- `email_quality_status TEXT` — NULL | 'unique' | 'duplicate_shared'
+- `email_quality_checked_at TIMESTAMPTZ`
+- `email_share_count INT`
+
+Apply `sql/agent_email_quality_columns.sql` in the Supabase SQL
+Editor (DDL cannot be applied via PostgREST).
