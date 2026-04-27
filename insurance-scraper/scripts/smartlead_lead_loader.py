@@ -327,9 +327,14 @@ def passes_quality_filter(agent: dict) -> tuple[bool, str | None]:
 def fetch_candidates(sb: Supabase, segment: str, limit: int,
                      exclude_ids: set[int]) -> list[dict]:
     base_params: dict = {
-        "select": "id,name,email,npn,state,appointments,appointments_count,is_new_licensee,opted_out,email_status,scraped_at",
+        "select": "id,name,email,npn,state,appointments,appointments_count,is_new_licensee,opted_out,email_status,scraped_at,email_quality_status",
         "email_status": "eq.verified",
         "opted_out": "eq.false",
+        # Postgres-side dedup filter: drop rows the audit flagged as shared
+        # by >=3 agents. NULL passes (un-audited rows) so we don't stall the
+        # loader if the audit cron hasn't run yet; the Python-side
+        # passes_quality_filter still enforces corp-pattern + name match.
+        "or": "(email_quality_status.is.null,email_quality_status.neq.duplicate_shared)",
         "order": "scraped_at.desc.nullslast",
     }
     if segment == "seq_a":
