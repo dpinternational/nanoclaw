@@ -5,9 +5,9 @@ Polls campaign analytics for pilot campaigns and auto-pauses any campaign
 exceeding bounce or unsubscribe thresholds. Notifies David on Telegram.
 
 Thresholds:
-  PAUSE: bounce_pct > 3.0 OR unsub_pct > 1.0
+  PAUSE: bounce_pct > 3.0 OR unsub_pct > 2.5
   WARN:  bounce_pct > 2.0 OR unsub_pct > 0.7
-Sample floor: sent_count >= 25 (otherwise reported as below-sample, no action).
+Sample floor: sent_count >= 50 (otherwise reported as below-sample, no action).
 
 Modes:
   --dry-run    (default) Compute and print, take NO actions.
@@ -54,10 +54,10 @@ CAMPAIGNS = [
 ]
 
 PAUSE_BOUNCE = 3.0
-PAUSE_UNSUB = 1.0
+PAUSE_UNSUB = 2.5
 WARN_BOUNCE = 2.0
 WARN_UNSUB = 0.7
-SAMPLE_FLOOR = 25
+SAMPLE_FLOOR = 50
 
 
 def now_iso() -> str:
