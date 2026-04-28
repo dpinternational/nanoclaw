@@ -213,3 +213,70 @@ Three columns on `agents`:
 
 Apply `sql/agent_email_quality_columns.sql` in the Supabase SQL
 Editor (DDL cannot be applied via PostgREST).
+
+## Deliverability Monitoring (GlockApps)
+
+Two-script automation that uses the GlockApps `autoTestEmail` magic seed
+to produce inbox-placement reports for the live Smartlead pilot
+sequences. Direct test-trigger endpoints (`/test/start`, `/createTest`,
+`/seedList`) are blocked on the current GlockApps plan tier, so we
+inject the seed as a Smartlead lead instead.
+
+### Components
+- `scripts/glockapps_seed_inject.py` — adds the project's
+  `autoTestEmail` (e.g. `ipm7vvz_4df0@at.glockapps.com`) as a lead to
+  both pilot campaigns once per week. Idempotent: skips a campaign if
+  the seed is already present. Writes a sentinel row
+  (`agent_id=-1`, `segment='glockapps_seed'`) to
+  `agent_smartlead_loads`.
+- `scripts/glockapps_sync.py` — every 30 min, lists tests under the
+  configured project, detects new completed tests vs. the cursor in
+  `state/glockapps_last_seen.json`, fetches detail, parses placement +
+  auth + blacklist data, appends to `state/glockapps_results.jsonl`,
+  and upserts to `glockapps_test_results` in Supabase.
+- `sql/glockapps_test_results_schema.sql` — Supabase table + RLS
+  policy (apply manually via Supabase SQL editor).
+
+### Alerts
+- `🚨 GlockApps placement: <inbox>% inbox, <spam>% spam — degraded
+  deliverability` — triggered on any new test with inbox < 80% OR any
+  failing SPF/DKIM/DMARC.
+- `✅ GlockApps: <inbox>% inbox placement, all clean` — triggered on
+  any new test with inbox >= 90% AND all auth passing.
+- `🎯 GlockApps seed injected into Seq A + Seq B. ...` — emitted on
+  successful weekly seed inject.
+
+### Cadence
+Each weekly seed runs through all 5 sequence steps over ~16 days, so
+each injection produces up to 5 placement reports per campaign. With
+both pilots active that is up to 10 reports/week.
+
+### Cron (user `david`)
+```
+*/30 * * * * cd /home/david/insurance-scraper && /usr/bin/python3 scripts/glockapps_sync.py >> logs/glockapps_sync.log 2>&1
+0 13 * * 1   cd /home/david/insurance-scraper && /usr/bin/python3 scripts/glockapps_seed_inject.py --execute >> logs/glockapps_seed_inject.log 2>&1
+```
+(`13:00 UTC` = `09:00 ET` Monday morning.)
+
+### Manual usage
+```
+# Preview what would be injected (default)
+python3 scripts/glockapps_seed_inject.py
+
+# Inject into both pilots
+python3 scripts/glockapps_seed_inject.py --execute
+
+# Inject into a single campaign only
+python3 scripts/glockapps_seed_inject.py --execute --campaign-id 3232436
+
+# Force a sync poll
+python3 scripts/glockapps_sync.py
+```
+
+### Speeding up the first report
+After a manual injection, the seed lead enters the campaign queue at
+position N where N = current `notStarted` count. With pilots throttled
+to 25 leads/day per campaign, M-F 9-5 ET, that can be several business
+days. To get same-day data, prioritize the seed lead inside the
+Smartlead UI (campaign → leads → search the seed email → "Move to
+top of queue").
