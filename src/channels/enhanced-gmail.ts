@@ -1,6 +1,7 @@
 /**
  * ENHANCED GMAIL CHANNEL WITH EMAIL CLASSIFICATION
- * Integrates with the new email classification engine and Discord routing system
+ * Integrates with the email classification engine for labeling and routing
+ * to the main group.
  */
 
 import fs from 'fs';
@@ -27,14 +28,12 @@ import {
   UrgencyLevel,
   EmailAction,
 } from '../email-classifier.js';
-import { DiscordEmailRouter, DiscordMessage } from '../discord-email-router.js';
 import { isTPGEmail, captureTPGEmail } from '../recruitment-db.js';
 
 export interface EnhancedGmailChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
-  onDiscordMessage?: (message: DiscordMessage) => Promise<void>;
 }
 
 interface ThreadMeta {
@@ -60,12 +59,10 @@ export class EnhancedGmailChannel implements Channel {
 
   // Enhanced features
   private classifier: EmailClassificationEngine;
-  private discordRouter: DiscordEmailRouter;
   private processingStats = {
     totalProcessed: 0,
     autoArchived: 0,
     escalated: 0,
-    discordRouted: 0,
     lastReset: new Date(),
   };
 
@@ -73,7 +70,6 @@ export class EnhancedGmailChannel implements Channel {
     this.opts = opts;
     this.pollIntervalMs = pollIntervalMs;
     this.classifier = new EmailClassificationEngine();
-    this.discordRouter = new DiscordEmailRouter();
   }
 
   async connect(): Promise<void> {
@@ -326,14 +322,6 @@ export class EnhancedGmailChannel implements Channel {
       });
     }
 
-    // Route to Discord if not auto-archived/spam
-    if (
-      classification.action !== EmailAction.AUTO_ARCHIVE &&
-      classification.action !== EmailAction.SPAM_FILTER
-    ) {
-      await this.routeToDiscord(email, classification);
-    }
-
     // Handle auto-actions
     await this.executeAutoActions(email, classification);
 
@@ -351,42 +339,6 @@ export class EnhancedGmailChannel implements Channel {
       'enhanced-gmail',
       false,
     );
-  }
-
-  /**
-   * Route email to Discord based on classification
-   */
-  private async routeToDiscord(
-    email: EmailMetadata,
-    classification: ClassificationResult,
-  ): Promise<void> {
-    try {
-      const discordMessage = await this.discordRouter.routeEmail(
-        email,
-        classification,
-      );
-
-      // Send to Discord via callback if provided
-      if (this.opts.onDiscordMessage) {
-        await this.opts.onDiscordMessage(discordMessage);
-      }
-
-      this.processingStats.discordRouted++;
-
-      logger.info(
-        {
-          emailId: email.id,
-          discordChannel: discordMessage.channelId,
-          category: classification.category,
-        },
-        'Email routed to Discord',
-      );
-    } catch (error) {
-      logger.error(
-        { emailId: email.id, error },
-        'Failed to route email to Discord',
-      );
-    }
   }
 
   /**
@@ -482,7 +434,7 @@ export class EnhancedGmailChannel implements Channel {
     _classification: ClassificationResult,
   ): boolean {
     // DISABLED: Do NOT auto-feed emails to Andy. He was sending replies
-    // without David's approval. Emails go to Discord triage only.
+    // without David's approval. Emails are classified and labeled.
     // David reviews and tells Andy what to do via Telegram.
     return false;
   }
@@ -554,7 +506,7 @@ export class EnhancedGmailChannel implements Channel {
   }
 
   /**
-   * Send periodic statistics update to Discord
+   * Send periodic statistics update (logs only)
    */
   private async sendStatsUpdateIfNeeded(): Promise<void> {
     const now = new Date();
@@ -562,37 +514,29 @@ export class EnhancedGmailChannel implements Channel {
       (now.getTime() - this.processingStats.lastReset.getTime()) /
       (1000 * 60 * 60);
 
-    // Send summary every 4 hours if there's been activity
+    // Log summary every 4 hours if there's been activity
     if (hoursSinceReset >= 4 && this.processingStats.totalProcessed > 0) {
       try {
-        const summaryMessage = this.discordRouter.createActivitySummary(
-          [],
-          '4 hours',
+        logger.info(
+          { stats: this.generateStatsContent() },
+          'Email processing stats summary',
         );
-        summaryMessage.content = this.generateStatsContent();
-
-        if (this.opts.onDiscordMessage) {
-          await this.opts.onDiscordMessage(summaryMessage);
-        }
 
         // Reset stats
         this.processingStats = {
           totalProcessed: 0,
           autoArchived: 0,
           escalated: 0,
-          discordRouted: 0,
           lastReset: now,
         };
-
-        logger.info('Email processing stats summary sent to Discord');
       } catch (error) {
-        logger.error({ error }, 'Failed to send stats summary');
+        logger.error({ error }, 'Failed to log stats summary');
       }
     }
   }
 
   /**
-   * Generate statistics content for Discord
+   * Generate statistics content
    */
   private generateStatsContent(): string {
     return [
@@ -601,9 +545,8 @@ export class EnhancedGmailChannel implements Channel {
       `📧 Total Processed: ${this.processingStats.totalProcessed}`,
       `📦 Auto-Archived: ${this.processingStats.autoArchived}`,
       `🚨 Escalated: ${this.processingStats.escalated}`,
-      `💬 Routed to Discord: ${this.processingStats.discordRouted}`,
       '',
-      'All emails classified and routed automatically. Check individual channels for details.',
+      'All emails classified and labeled automatically.',
     ].join('\n');
   }
 
@@ -736,13 +679,6 @@ export class EnhancedGmailChannel implements Channel {
    */
   public getClassifier(): EmailClassificationEngine {
     return this.classifier;
-  }
-
-  /**
-   * Get Discord router for external access
-   */
-  public getDiscordRouter(): DiscordEmailRouter {
-    return this.discordRouter;
   }
 
   /**

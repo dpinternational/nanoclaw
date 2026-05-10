@@ -23,7 +23,6 @@ export interface ClassificationResult {
   urgency: UrgencyLevel;
   action: EmailAction;
   reason: string;
-  discordChannel: string;
   escalation?: EscalationConfig;
   autoActions?: AutoAction[];
   routing?: RoutingConfig;
@@ -101,22 +100,6 @@ export class EmailClassificationEngine {
   private keywordWeights = new Map<string, number>();
   private timeBasedPatterns = new Map<string, number>();
 
-  // SIMPLIFIED SINGLE CHANNEL CONFIGURATION
-  private discordChannels = {
-    EMAIL_TRIAGE: '1484841234567890128', // Single unified email triage channel
-    // Keep fallback references for backwards compatibility
-    BUSINESS_CRITICAL: '1484841234567890128',
-    CLIENT_COMMUNICATIONS: '1484841234567890128',
-    RECRUITMENT: '1484841234567890128',
-    FINANCIAL: '1484841234567890128',
-    CALENDAR: '1484841234567890128',
-    VENDOR: '1484841234567890128',
-    ANALYTICS: '1484841234567890128',
-    GENERAL: '1484841234567890128',
-    ARCHIVE: '1484841234567890128',
-  };
-
-  // VIP sender patterns (case-insensitive)
   private vipSenders = [
     '@callagylaw.com',
     'davidprice@tpglife.com',
@@ -490,9 +473,6 @@ export class EmailClassificationEngine {
     // Determine action
     const action = this.determineAction(category, priority, urgency);
 
-    // Set Discord routing
-    const discordChannel = this.getDiscordChannel(category);
-
     // Generate reason
     const reason = this.generateReason(category, topCategory.score, email);
 
@@ -505,16 +485,11 @@ export class EmailClassificationEngine {
       urgency,
       action,
       reason,
-      discordChannel,
       escalation,
       confidence,
       sentiment: email.content
         ? this.analyzeSentiment(email.content.toLowerCase())
         : undefined,
-      routing: {
-        primary: discordChannel,
-        fallback: this.discordChannels.EMAIL_TRIAGE,
-      },
     };
   }
 
@@ -645,7 +620,7 @@ export class EmailClassificationEngine {
       return {
         type: 'time_based',
         delayMs: 5 * 60 * 1000, // 5 minutes
-        channels: [this.discordChannels.BUSINESS_CRITICAL],
+        channels: [],
         mentions: ['@here'],
       };
     }
@@ -654,17 +629,11 @@ export class EmailClassificationEngine {
       return {
         type: 'time_based',
         delayMs: 30 * 60 * 1000, // 30 minutes
-        channels: [this.discordChannels.BUSINESS_CRITICAL],
+        channels: [],
       };
     }
 
     return undefined;
-  }
-
-  private getDiscordChannel(category: EmailCategory): string {
-    // SIMPLIFIED: All emails go to the single email-triage channel
-    // Intelligence is in the formatting and priority indicators, not channel routing
-    return this.discordChannels.EMAIL_TRIAGE;
   }
 
   private generateReason(

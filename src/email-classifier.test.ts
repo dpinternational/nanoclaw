@@ -400,21 +400,6 @@ describe('escalation configuration', () => {
   });
 });
 
-// --- Routing ---
-
-describe('routing configuration', () => {
-  it('all emails route to EMAIL_TRIAGE channel', async () => {
-    const email = makeEmail({
-      from: 'anyone@anywhere.com',
-      subject: 'Test',
-    });
-    const result = await engine.classifyEmail(email);
-    expect(result.discordChannel).toBe('1484841234567890128');
-    expect(result.routing).toBeDefined();
-    expect(result.routing!.primary).toBe('1484841234567890128');
-  });
-});
-
 // --- Confidence ---
 
 describe('confidence scoring', () => {
