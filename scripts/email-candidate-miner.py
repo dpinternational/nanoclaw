@@ -167,7 +167,9 @@ def used_subjects():
 
 
 # ---------------- Claude ranking + drafting ----------------
-CLAUDE_MODELS = ["claude-opus-4-7", "claude-opus-4-5-20250929", "claude-sonnet-4-5"]
+# Cost reduction 2026-05-12:
+# Use Sonnet first and fall back to Haiku. Opus was overkill for candidate ranking.
+CLAUDE_MODELS = ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]
 
 def call_claude(system, user, max_tokens=4000):
     import anthropic
